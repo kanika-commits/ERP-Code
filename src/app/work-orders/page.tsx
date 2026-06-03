@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { AppTopbar } from '@/components/AppTopbar';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { supabase } from '@/lib/supabase';
@@ -342,7 +343,9 @@ function WorkOrderMasters() {
                     workOrders.map((workOrder) => (
                       <tr key={workOrder.id}>
                         <td>
-                          <strong>{workOrder.wo_number}</strong>
+                          <Link className="table-link table-link-strong" href={`/work-orders/${workOrder.id}`}>
+                            {workOrder.wo_number}
+                          </Link>
                           {workOrder.folder_url ? (
                             <>
                               <br />
