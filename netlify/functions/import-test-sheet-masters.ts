@@ -130,26 +130,30 @@ export const handler: Handler = async (event) => {
     if (siteLoadError) throw siteLoadError;
 
     const siteByKey = new Map((existingSites || []).map((site) => [normalizeKey(site.name), site.id]));
-    let sitesCreated = 0;
+    const siteInserts = [];
 
     for (const row of summaryRows) {
       const siteName = clean(row['Site Name']);
       const key = normalizeKey(siteName);
       if (!siteName || siteByKey.has(key)) continue;
 
-      const { data, error } = await supabaseAdmin
-        .from('sites')
-        .insert({
-          name: siteName,
-          status: clean(row.Status) || 'active',
-        })
-        .select('id')
-        .single();
-
-      if (error) throw error;
-      siteByKey.set(key, data.id);
-      sitesCreated += 1;
+      siteInserts.push({
+        name: siteName,
+        status: clean(row.Status) || 'active',
+      });
+      siteByKey.set(key, '');
     }
+
+    let sitesCreated = 0;
+    if (siteInserts.length) {
+      const { error } = await supabaseAdmin.from('sites').insert(siteInserts);
+      if (error) throw error;
+      sitesCreated = siteInserts.length;
+    }
+
+    const { data: refreshedSites, error: refreshedSiteError } = await supabaseAdmin.from('sites').select('id,name');
+    if (refreshedSiteError) throw refreshedSiteError;
+    refreshedSites?.forEach((site) => siteByKey.set(normalizeKey(site.name), site.id));
 
     const vendorCandidates = new Map<string, ReturnType<typeof contractorFromProfile>>();
 
@@ -169,6 +173,8 @@ export const handler: Handler = async (event) => {
     const vendorByKey = new Map((existingVendors || []).map((vendor) => [normalizeKey(vendor.name), vendor.id]));
     let vendorsCreated = 0;
     let vendorsUpdated = 0;
+    const vendorInserts = [];
+    const vendorUpdates = [];
 
     for (const [key, vendor] of vendorCandidates.entries()) {
       const existingId = vendorByKey.get(key);
@@ -184,17 +190,29 @@ export const handler: Handler = async (event) => {
       };
 
       if (existingId) {
-        const { error } = await supabaseAdmin.from('vendors').update(payload).eq('id', existingId);
-        if (error) throw error;
-        vendorsUpdated += 1;
+        vendorUpdates.push({ id: existingId, ...payload });
         continue;
       }
 
-      const { data, error } = await supabaseAdmin.from('vendors').insert(payload).select('id').single();
-      if (error) throw error;
-      vendorByKey.set(key, data.id);
-      vendorsCreated += 1;
+      vendorInserts.push(payload);
+      vendorByKey.set(key, '');
     }
+
+    if (vendorUpdates.length) {
+      const { error } = await supabaseAdmin.from('vendors').upsert(vendorUpdates, { onConflict: 'id' });
+      if (error) throw error;
+      vendorsUpdated = vendorUpdates.length;
+    }
+
+    if (vendorInserts.length) {
+      const { error } = await supabaseAdmin.from('vendors').insert(vendorInserts);
+      if (error) throw error;
+      vendorsCreated = vendorInserts.length;
+    }
+
+    const { data: refreshedVendors, error: refreshedVendorError } = await supabaseAdmin.from('vendors').select('id,name');
+    if (refreshedVendorError) throw refreshedVendorError;
+    refreshedVendors?.forEach((vendor) => vendorByKey.set(normalizeKey(vendor.name), vendor.id));
 
     const { data: existingWorkOrders, error: workOrderLoadError } = await supabaseAdmin.from('work_orders').select('id,wo_number,work_order_number');
     if (workOrderLoadError) throw workOrderLoadError;
@@ -204,6 +222,8 @@ export const handler: Handler = async (event) => {
     );
     let workOrdersCreated = 0;
     let workOrdersUpdated = 0;
+    const workOrderInserts = [];
+    const workOrderUpdates = [];
 
     for (const row of summaryRows) {
       const woNumber = clean(row['WO Number']);
@@ -228,16 +248,24 @@ export const handler: Handler = async (event) => {
 
       const existingId = workOrderByKey.get(normalizeKey(woNumber));
       if (existingId) {
-        const { error } = await supabaseAdmin.from('work_orders').update(payload).eq('id', existingId);
-        if (error) throw error;
-        workOrdersUpdated += 1;
+        workOrderUpdates.push({ id: existingId, ...payload });
         continue;
       }
 
-      const { data, error } = await supabaseAdmin.from('work_orders').insert(payload).select('id').single();
+      workOrderInserts.push(payload);
+      workOrderByKey.set(normalizeKey(woNumber), '');
+    }
+
+    if (workOrderUpdates.length) {
+      const { error } = await supabaseAdmin.from('work_orders').upsert(workOrderUpdates, { onConflict: 'id' });
       if (error) throw error;
-      workOrderByKey.set(normalizeKey(woNumber), data.id);
-      workOrdersCreated += 1;
+      workOrdersUpdated = workOrderUpdates.length;
+    }
+
+    if (workOrderInserts.length) {
+      const { error } = await supabaseAdmin.from('work_orders').insert(workOrderInserts);
+      if (error) throw error;
+      workOrdersCreated = workOrderInserts.length;
     }
 
     return json(200, {
@@ -252,4 +280,3 @@ export const handler: Handler = async (event) => {
     return json(500, { error: error instanceof Error ? error.message : 'Import failed.' });
   }
 };
-
