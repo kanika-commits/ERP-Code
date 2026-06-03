@@ -127,6 +127,11 @@ input {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.stack {
+  display: grid;
+  gap: 16px;
+}
+
 .card {
   background: var(--panel);
   border: 1px solid var(--line);
@@ -151,6 +156,54 @@ input {
   font-size: 28px;
   font-weight: 800;
   margin-top: 12px;
+}
+
+.section-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 16px;
+}
+
+.section-head h2,
+.section-head p {
+  margin-bottom: 0;
+}
+
+.pill,
+.status-pill {
+  background: #e8f5ee;
+  border-radius: 999px;
+  color: var(--good);
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
+.table-wrap {
+  overflow-x: auto;
+}
+
+.data-table {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+.data-table th {
+  background: var(--panel-soft);
+  color: var(--muted);
+  font-size: 13px;
+  text-align: left;
+}
+
+.data-table th,
+.data-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 12px 14px;
+  vertical-align: top;
 }
 
 .login-wrap {
@@ -238,4 +291,3 @@ input {
     grid-template-columns: 1fr;
   }
 }
-
