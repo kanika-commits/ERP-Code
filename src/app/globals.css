@@ -320,6 +320,28 @@ textarea {
   font-size: 16px;
 }
 
+.import-banner {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  margin: 12px 0 18px;
+  padding: 14px;
+}
+
+.import-banner div {
+  display: grid;
+  gap: 4px;
+}
+
+.import-banner span {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .form-row {
   align-items: end;
   display: grid;
@@ -385,6 +407,11 @@ textarea {
 
   .summary-grid {
     grid-template-columns: 1fr;
+  }
+
+  .import-banner {
+    align-items: flex-start;
+    flex-direction: column;
   }
 
   .form-row {

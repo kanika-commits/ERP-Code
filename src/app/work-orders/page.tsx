@@ -118,6 +118,7 @@ function WorkOrderMasters() {
   const [message, setMessage] = useState('');
   const [createError, setCreateError] = useState('');
   const [creating, setCreating] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   async function loadMasters() {
     setLoading(true);
@@ -302,6 +303,44 @@ function WorkOrderMasters() {
     loadMasters();
   }
 
+  async function importTestSheetMasters() {
+    setMessage('');
+    setCreateError('');
+    setImporting(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch('/.netlify/functions/import-test-sheet-masters', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+      },
+    });
+
+    const result = (await response.json()) as {
+      error?: string;
+      message?: string;
+      sitesCreated?: number;
+      vendorsCreated?: number;
+      vendorsUpdated?: number;
+      workOrdersCreated?: number;
+      workOrdersUpdated?: number;
+    };
+    setImporting(false);
+
+    if (!response.ok) {
+      setCreateError(result.error ?? 'Could not import copied sheet.');
+      return;
+    }
+
+    setMessage(
+      `${result.message ?? 'Import complete'} Sites +${result.sitesCreated ?? 0}, vendors +${result.vendorsCreated ?? 0}/${result.vendorsUpdated ?? 0} updated, work orders +${result.workOrdersCreated ?? 0}/${result.workOrdersUpdated ?? 0} updated.`,
+    );
+    loadMasters();
+  }
+
   const projectsForSelectedSite = projects.filter((project) => !woSiteId || project.site_id === woSiteId);
 
   return (
@@ -382,6 +421,16 @@ function WorkOrderMasters() {
           {!loadingAccess && !isAdmin ? <p>Only Admin and Super Admin users can create work orders.</p> : null}
           {!loadingAccess && isAdmin ? (
             <>
+              <div className="import-banner">
+                <div>
+                  <strong>Copied sheet import</strong>
+                  <span>Import test vendors, sites, and work orders from the copied Google Sheet.</span>
+                </div>
+                <button className="ghost-button" disabled={importing || creating} onClick={importTestSheetMasters} type="button">
+                  {importing ? 'Importing...' : 'Import test sheet'}
+                </button>
+              </div>
+
               <div className="form-grid">
                 <div className="field">
                   <label htmlFor="wo-number">Work order number</label>
