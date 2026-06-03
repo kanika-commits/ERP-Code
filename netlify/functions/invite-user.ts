@@ -66,10 +66,24 @@ export const handler: Handler = async (event) => {
     };
   }
 
+  const { data: profileRows, error: profileError } = await supabaseAdmin
+    .from('profiles')
+    .select('id,email')
+    .or(`id.eq.${user.id},email.eq.${user.email}`);
+
+  if (profileError) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: profileError.message }),
+    };
+  }
+
+  const profileIds = Array.from(new Set([user.id, ...(profileRows ?? []).map((profile) => profile.id)]));
+
   const { data: userRoleRows, error: userRoleError } = await supabaseAdmin
     .from('user_roles')
     .select('role_id')
-    .eq('user_id', user.id);
+    .in('user_id', profileIds);
 
   if (userRoleError) {
     return {
@@ -96,7 +110,9 @@ export const handler: Handler = async (event) => {
   if (!isAdmin) {
     return {
       statusCode: 403,
-      body: JSON.stringify({ error: 'Only admins can invite users.' }),
+      body: JSON.stringify({
+        error: `Only admins can invite users. Signed in as ${user.email ?? user.id}, but no admin role was found.`,
+      }),
     };
   }
 
