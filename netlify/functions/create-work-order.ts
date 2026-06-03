@@ -55,6 +55,7 @@ export const handler: Handler = async (event) => {
       status: 'active',
       total_value: totalValue,
       vendor_id: payload.vendorId,
+      work_order_number: woNumber,
       wo_number: woNumber,
       wo_type: payload.woType?.trim() || null,
     })
@@ -70,4 +71,3 @@ export const handler: Handler = async (event) => {
     workOrderId: data.id,
   });
 };
-
