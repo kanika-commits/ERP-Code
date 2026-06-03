@@ -5,6 +5,7 @@ import { AppTopbar } from '@/components/AppTopbar';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { ROLE_LABELS, type RoleCode } from '@/lib/roles';
 import { supabase } from '@/lib/supabase';
+import { useCurrentUserAccess } from '@/lib/useCurrentUserAccess';
 
 type Profile = {
   id: string;
@@ -34,6 +35,7 @@ function normalizeRole(row: UserRoleRow) {
 }
 
 function UsersDirectory() {
+  const { isAdmin, loading: loadingAccess } = useCurrentUserAccess();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -236,86 +238,100 @@ function UsersDirectory() {
 
       <div className="card">
         <h2>Invite User</h2>
-        <p>Send a Supabase invite email. After the user accepts, assign their ERP role and access scope.</p>
+        {loadingAccess ? <p>Checking admin access...</p> : null}
+        {!loadingAccess && !isAdmin ? <p>Only Admin and Super Admin users can invite new ERP users.</p> : null}
+        {!loadingAccess && isAdmin ? (
+          <>
+            <p>Send a Supabase invite email. After the user accepts, assign their ERP role and access scope.</p>
 
-        <div className="form-row">
-          <div className="field">
-            <label htmlFor="invite-name">Full name</label>
-            <input
-              id="invite-name"
-              onChange={(event) => setInviteName(event.target.value)}
-              placeholder="User name"
-              value={inviteName}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="invite-email">Email</label>
-            <input
-              id="invite-email"
-              inputMode="email"
-              onChange={(event) => setInviteEmail(event.target.value)}
-              placeholder="user@company.com"
-              type="email"
-              value={inviteEmail}
-            />
-          </div>
-          <button className="primary-button form-row-button" disabled={inviting} onClick={inviteUser} type="button">
-            {inviting ? 'Sending...' : 'Send invite'}
-          </button>
-        </div>
+            <div className="form-row">
+              <div className="field">
+                <label htmlFor="invite-name">Full name</label>
+                <input
+                  id="invite-name"
+                  onChange={(event) => setInviteName(event.target.value)}
+                  placeholder="User name"
+                  value={inviteName}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="invite-email">Email</label>
+                <input
+                  id="invite-email"
+                  inputMode="email"
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                  placeholder="user@company.com"
+                  type="email"
+                  value={inviteEmail}
+                />
+              </div>
+              <button className="primary-button form-row-button" disabled={inviting} onClick={inviteUser} type="button">
+                {inviting ? 'Sending...' : 'Send invite'}
+              </button>
+            </div>
 
-        {inviteMessage ? <div className="notice">{inviteMessage}</div> : null}
-        {inviteError ? <div className="error">{inviteError}</div> : null}
+            {inviteMessage ? <div className="notice">{inviteMessage}</div> : null}
+            {inviteError ? <div className="error">{inviteError}</div> : null}
+          </>
+        ) : null}
       </div>
 
       <div className="card">
         <h2>Assign Role</h2>
-        <p>Create or update an ERP profile for an existing Supabase Auth user.</p>
+        {loadingAccess ? <p>Checking admin access...</p> : null}
+        {!loadingAccess && !isAdmin ? <p>Only Admin and Super Admin users can assign ERP roles.</p> : null}
+        {!loadingAccess && isAdmin ? (
+          <>
+            <p>Create or update an ERP profile for an existing Supabase Auth user.</p>
 
-        <div className="form-row role-form-row">
-          <div className="field">
-            <label htmlFor="assign-name">Full name</label>
-            <input
-              id="assign-name"
-              onChange={(event) => setAssignName(event.target.value)}
-              placeholder="User name"
-              value={assignName}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="assign-email">Email</label>
-            <input
-              id="assign-email"
-              inputMode="email"
-              onChange={(event) => setAssignEmail(event.target.value)}
-              placeholder="user@company.com"
-              type="email"
-              value={assignEmail}
-            />
-          </div>
-          <div className="field">
-            <label htmlFor="assign-role">Role</label>
-            <select id="assign-role" onChange={(event) => setAssignRole(event.target.value as RoleCode)} value={assignRole}>
-              {Object.entries(ROLE_LABELS).map(([code, label]) => (
-                <option key={code} value={code}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-          <button className="primary-button form-row-button" disabled={assigning} onClick={assignRoleToUser} type="button">
-            {assigning ? 'Assigning...' : 'Assign role'}
-          </button>
-        </div>
+            <div className="form-row role-form-row">
+              <div className="field">
+                <label htmlFor="assign-name">Full name</label>
+                <input
+                  id="assign-name"
+                  onChange={(event) => setAssignName(event.target.value)}
+                  placeholder="User name"
+                  value={assignName}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="assign-email">Email</label>
+                <input
+                  id="assign-email"
+                  inputMode="email"
+                  onChange={(event) => setAssignEmail(event.target.value)}
+                  placeholder="user@company.com"
+                  type="email"
+                  value={assignEmail}
+                />
+              </div>
+              <div className="field">
+                <label htmlFor="assign-role">Role</label>
+                <select id="assign-role" onChange={(event) => setAssignRole(event.target.value as RoleCode)} value={assignRole}>
+                  {Object.entries(ROLE_LABELS).map(([code, label]) => (
+                    <option key={code} value={code}>
+                      {label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <button className="primary-button form-row-button" disabled={assigning} onClick={assignRoleToUser} type="button">
+                {assigning ? 'Assigning...' : 'Assign role'}
+              </button>
+            </div>
 
-        {assignMessage ? <div className="notice">{assignMessage}</div> : null}
-        {assignError ? <div className="error">{assignError}</div> : null}
+            {assignMessage ? <div className="notice">{assignMessage}</div> : null}
+            {assignError ? <div className="error">{assignError}</div> : null}
+          </>
+        ) : null}
       </div>
     </div>
   );
 }
 
 export default function UsersPage() {
+  const { isAdmin, loading } = useCurrentUserAccess();
+
   return (
     <ProtectedPage>
       {() => (
@@ -326,7 +342,16 @@ export default function UsersPage() {
               <h1>Users</h1>
               <p>Manage internal MRC users and vendor-scoped ERP access.</p>
             </div>
-            <UsersDirectory />
+            {loading ? (
+              <div className="card">Checking access...</div>
+            ) : isAdmin ? (
+              <UsersDirectory />
+            ) : (
+              <div className="card">
+                <h2>Access Restricted</h2>
+                <p>Only Admin and Super Admin users can manage ERP users and roles.</p>
+              </div>
+            )}
           </section>
         </main>
       )}
