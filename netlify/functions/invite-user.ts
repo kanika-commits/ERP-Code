@@ -66,10 +66,23 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const { data: roleRows, error: roleError } = await supabaseAdmin
+  const { data: userRoleRows, error: userRoleError } = await supabaseAdmin
     .from('user_roles')
-    .select('roles(code)')
+    .select('role_id')
     .eq('user_id', user.id);
+
+  if (userRoleError) {
+    return {
+      statusCode: 500,
+      body: JSON.stringify({ error: userRoleError.message }),
+    };
+  }
+
+  const roleIds = (userRoleRows ?? []).map((row) => row.role_id).filter(Boolean);
+
+  const { data: roleRows, error: roleError } = roleIds.length
+    ? await supabaseAdmin.from('roles').select('code').in('id', roleIds)
+    : { data: [], error: null };
 
   if (roleError) {
     return {
@@ -78,11 +91,7 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const isAdmin = (roleRows ?? []).some((row) => {
-    const roles = row.roles as { code?: string } | { code?: string }[] | null;
-    const role = Array.isArray(roles) ? roles[0] : roles;
-    return role?.code === 'super_admin' || role?.code === 'admin';
-  });
+  const isAdmin = (roleRows ?? []).some((role) => role.code === 'super_admin' || role.code === 'admin');
 
   if (!isAdmin) {
     return {
