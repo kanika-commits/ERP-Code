@@ -43,6 +43,12 @@ function UsersDirectory() {
   const [inviteMessage, setInviteMessage] = useState('');
   const [inviteError, setInviteError] = useState('');
   const [inviting, setInviting] = useState(false);
+  const [assignEmail, setAssignEmail] = useState('');
+  const [assignName, setAssignName] = useState('');
+  const [assignRole, setAssignRole] = useState<RoleCode>('viewer');
+  const [assignMessage, setAssignMessage] = useState('');
+  const [assignError, setAssignError] = useState('');
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -129,6 +135,48 @@ function UsersDirectory() {
     setInviteMessage(result.message ?? 'Invite sent.');
     setInviteEmail('');
     setInviteName('');
+  }
+
+  async function assignRoleToUser() {
+    setAssignMessage('');
+    setAssignError('');
+
+    if (!assignEmail || !assignRole) {
+      setAssignError('Enter an email and choose a role.');
+      return;
+    }
+
+    setAssigning(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch('/.netlify/functions/assign-user-role', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: assignEmail,
+        fullName: assignName,
+        roleCode: assignRole,
+      }),
+    });
+
+    const result = (await response.json()) as { error?: string; message?: string };
+    setAssigning(false);
+
+    if (!response.ok) {
+      setAssignError(result.error ?? 'Could not assign role.');
+      return;
+    }
+
+    setAssignMessage(result.message ?? 'Role assigned.');
+    setAssignEmail('');
+    setAssignName('');
+    setAssignRole('viewer');
   }
 
   return (
@@ -218,6 +266,50 @@ function UsersDirectory() {
 
         {inviteMessage ? <div className="notice">{inviteMessage}</div> : null}
         {inviteError ? <div className="error">{inviteError}</div> : null}
+      </div>
+
+      <div className="card">
+        <h2>Assign Role</h2>
+        <p>Create or update an ERP profile for an existing Supabase Auth user.</p>
+
+        <div className="form-row role-form-row">
+          <div className="field">
+            <label htmlFor="assign-name">Full name</label>
+            <input
+              id="assign-name"
+              onChange={(event) => setAssignName(event.target.value)}
+              placeholder="User name"
+              value={assignName}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="assign-email">Email</label>
+            <input
+              id="assign-email"
+              inputMode="email"
+              onChange={(event) => setAssignEmail(event.target.value)}
+              placeholder="user@company.com"
+              type="email"
+              value={assignEmail}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="assign-role">Role</label>
+            <select id="assign-role" onChange={(event) => setAssignRole(event.target.value as RoleCode)} value={assignRole}>
+              {Object.entries(ROLE_LABELS).map(([code, label]) => (
+                <option key={code} value={code}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <button className="primary-button form-row-button" disabled={assigning} onClick={assignRoleToUser} type="button">
+            {assigning ? 'Assigning...' : 'Assign role'}
+          </button>
+        </div>
+
+        {assignMessage ? <div className="notice">{assignMessage}</div> : null}
+        {assignError ? <div className="error">{assignError}</div> : null}
       </div>
     </div>
   );

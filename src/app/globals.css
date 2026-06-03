@@ -28,7 +28,8 @@ a {
 }
 
 button,
-input {
+input,
+select {
   font: inherit;
 }
 
@@ -252,7 +253,9 @@ input {
   font-weight: 700;
 }
 
-.field input {
+.field input,
+.field select {
+  background: #fff;
   border: 1px solid var(--line);
   border-radius: 6px;
   min-height: 44px;
@@ -269,6 +272,10 @@ input {
 
 .form-row-button {
   min-height: 44px;
+}
+
+.role-form-row {
+  grid-template-columns: 1fr 1fr minmax(180px, 220px) auto;
 }
 
 .notice {
@@ -304,6 +311,10 @@ input {
   }
 
   .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .role-form-row {
     grid-template-columns: 1fr;
   }
 }
