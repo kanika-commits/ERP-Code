@@ -47,14 +47,28 @@ function DashboardContent({ userEmail }: { userEmail?: string }) {
       setLoadingProfile(true);
       setProfileError('');
 
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (!user || userError) {
+        if (!mounted) return;
+        setProfileError(userError?.message || 'No signed-in user.');
+        setLoadingProfile(false);
+        return;
+      }
+
       const { data: profileData, error: profileLoadError } = await supabase
         .from('profiles')
         .select('full_name,email,status')
+        .eq('id', user.id)
         .single();
 
       const { data: roleData, error: roleLoadError } = await supabase
         .from('user_roles')
-        .select('scope_type,roles(code,name)');
+        .select('scope_type,roles(code,name)')
+        .eq('user_id', user.id);
 
       if (!mounted) return;
 

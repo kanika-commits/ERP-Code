@@ -41,14 +41,30 @@ export function useCurrentUserAccess() {
       setLoading(true);
       setError('');
 
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (!user || userError) {
+        if (!mounted) return;
+        setError(userError?.message || 'No signed-in user.');
+        setProfile(null);
+        setRoles([]);
+        setLoading(false);
+        return;
+      }
+
       const { data: profileData, error: profileError } = await supabase
         .from('profiles')
         .select('full_name,email,status')
+        .eq('id', user.id)
         .single();
 
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select('scope_type,roles(code,name)');
+        .select('scope_type,roles(code,name)')
+        .eq('user_id', user.id);
 
       if (!mounted) return;
 
