@@ -17,9 +17,10 @@ export const handler: Handler = async (event) => {
   }
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  if (!supabaseUrl || !serviceRoleKey) {
+  if (!supabaseUrl || !supabaseAnonKey || !serviceRoleKey) {
     return {
       statusCode: 500,
       body: JSON.stringify({ error: 'Invite service is not configured.' }),
@@ -37,13 +38,6 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  });
-
   const authHeader = event.headers.authorization;
   const userToken = authHeader?.startsWith('Bearer ') ? authHeader.slice('Bearer '.length) : '';
 
@@ -53,6 +47,25 @@ export const handler: Handler = async (event) => {
       body: JSON.stringify({ error: 'Not signed in.' }),
     };
   }
+
+  const supabaseUser = createClient(supabaseUrl, supabaseAnonKey, {
+    global: {
+      headers: {
+        Authorization: `Bearer ${userToken}`,
+      },
+    },
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
+
+  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
+    auth: {
+      autoRefreshToken: false,
+      persistSession: false,
+    },
+  });
 
   const {
     data: { user },
@@ -66,46 +79,22 @@ export const handler: Handler = async (event) => {
     };
   }
 
-  const { data: profileRows, error: profileError } = await supabaseAdmin
-    .from('profiles')
-    .select('id,email')
-    .or(`id.eq.${user.id},email.eq.${user.email}`);
+  const { data: isSuperAdmin, error: superAdminError } = await supabaseUser.rpc('current_user_has_role', {
+    role_code: 'super_admin',
+  });
 
-  if (profileError) {
+  const { data: isAdminRole, error: adminError } = await supabaseUser.rpc('current_user_has_role', {
+    role_code: 'admin',
+  });
+
+  if (superAdminError || adminError) {
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: profileError.message }),
+      body: JSON.stringify({ error: superAdminError?.message || adminError?.message }),
     };
   }
 
-  const profileIds = Array.from(new Set([user.id, ...(profileRows ?? []).map((profile) => profile.id)]));
-
-  const { data: userRoleRows, error: userRoleError } = await supabaseAdmin
-    .from('user_roles')
-    .select('role_id')
-    .in('user_id', profileIds);
-
-  if (userRoleError) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: userRoleError.message }),
-    };
-  }
-
-  const roleIds = (userRoleRows ?? []).map((row) => row.role_id).filter(Boolean);
-
-  const { data: roleRows, error: roleError } = roleIds.length
-    ? await supabaseAdmin.from('roles').select('code').in('id', roleIds)
-    : { data: [], error: null };
-
-  if (roleError) {
-    return {
-      statusCode: 500,
-      body: JSON.stringify({ error: roleError.message }),
-    };
-  }
-
-  const isAdmin = (roleRows ?? []).some((role) => role.code === 'super_admin' || role.code === 'admin');
+  const isAdmin = Boolean(isSuperAdmin || isAdminRole);
 
   if (!isAdmin) {
     return {
