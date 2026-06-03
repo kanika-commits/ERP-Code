@@ -29,7 +29,8 @@ a {
 
 button,
 input,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -258,12 +259,27 @@ select {
 }
 
 .field input,
-.field select {
+.field select,
+.field textarea {
   background: #fff;
   border: 1px solid var(--line);
   border-radius: 6px;
   min-height: 44px;
   padding: 10px 12px;
+}
+
+.field textarea {
+  resize: vertical;
+}
+
+.field-wide {
+  grid-column: 1 / -1;
+}
+
+.table-link {
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .form-row {
