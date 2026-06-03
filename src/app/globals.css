@@ -159,6 +159,10 @@ select {
   margin-top: 12px;
 }
 
+.muted-text {
+  color: var(--muted);
+}
+
 .section-head {
   align-items: flex-start;
   display: flex;
@@ -274,6 +278,17 @@ select {
   min-height: 44px;
 }
 
+.form-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.action-row {
+  margin-top: 16px;
+}
+
 .role-form-row {
   grid-template-columns: 1fr 1fr minmax(180px, 220px) auto;
 }
@@ -311,6 +326,10 @@ select {
   }
 
   .form-row {
+    grid-template-columns: 1fr;
+  }
+
+  .form-grid {
     grid-template-columns: 1fr;
   }
 
