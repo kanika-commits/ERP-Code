@@ -1,14 +1,10 @@
 import type { Handler } from '@netlify/functions';
 import { json, requireAdmin } from '../../src/lib/adminFunction';
 
-type CreateVendorRequest = {
+type CreateProjectRequest = {
   name?: string;
-  vendorCode?: string;
-  email?: string;
-  phone?: string;
-  gstin?: string;
-  pan?: string;
-  contactName?: string;
+  projectCode?: string;
+  siteId?: string;
 };
 
 export const handler: Handler = async (event) => {
@@ -22,23 +18,19 @@ export const handler: Handler = async (event) => {
     return adminResult.error;
   }
 
-  const payload = JSON.parse(event.body || '{}') as CreateVendorRequest;
+  const payload = JSON.parse(event.body || '{}') as CreateProjectRequest;
   const name = payload.name?.trim();
 
-  if (!name) {
-    return json(400, { error: 'Vendor name is required.' });
+  if (!name || !payload.siteId) {
+    return json(400, { error: 'Project name and site are required.' });
   }
 
   const { data, error } = await adminResult.supabaseAdmin
-    .from('vendors')
+    .from('projects')
     .insert({
       name,
-      vendor_code: payload.vendorCode?.trim() || null,
-      email: payload.email?.trim().toLowerCase() || null,
-      phone: payload.phone?.trim() || null,
-      gstin: payload.gstin?.trim() || null,
-      pan: payload.pan?.trim() || null,
-      contact_name: payload.contactName?.trim() || null,
+      project_code: payload.projectCode?.trim() || null,
+      site_id: payload.siteId,
       status: 'active',
     })
     .select('id,name')
@@ -49,7 +41,7 @@ export const handler: Handler = async (event) => {
   }
 
   return json(200, {
-    message: `Created vendor ${data.name}.`,
-    vendorId: data.id,
+    message: `Created project ${data.name}.`,
+    projectId: data.id,
   });
 };
