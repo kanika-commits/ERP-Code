@@ -38,6 +38,11 @@ function UsersDirectory() {
   const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteName, setInviteName] = useState('');
+  const [inviteMessage, setInviteMessage] = useState('');
+  const [inviteError, setInviteError] = useState('');
+  const [inviting, setInviting] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -84,6 +89,46 @@ function UsersDirectory() {
         return row.scope_type === 'global' ? label : `${label} (${row.scope_type})`;
       })
       .filter((role): role is string => Boolean(role));
+  }
+
+  async function inviteUser() {
+    setInviteMessage('');
+    setInviteError('');
+
+    if (!inviteEmail) {
+      setInviteError('Enter an email address.');
+      return;
+    }
+
+    setInviting(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch('/.netlify/functions/invite-user', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        email: inviteEmail,
+        fullName: inviteName,
+      }),
+    });
+
+    const result = (await response.json()) as { error?: string; message?: string };
+    setInviting(false);
+
+    if (!response.ok) {
+      setInviteError(result.error ?? 'Could not send invite.');
+      return;
+    }
+
+    setInviteMessage(result.message ?? 'Invite sent.');
+    setInviteEmail('');
+    setInviteName('');
   }
 
   return (
@@ -142,11 +187,37 @@ function UsersDirectory() {
       </div>
 
       <div className="card">
-        <h2>Current Invite Method</h2>
-        <p>
-          For now, create Auth users in Supabase Authentication, then assign their profile and role with SQL. The next build
-          will add a controlled admin invite flow so this can be done from inside the ERP.
-        </p>
+        <h2>Invite User</h2>
+        <p>Send a Supabase invite email. After the user accepts, assign their ERP role and access scope.</p>
+
+        <div className="form-row">
+          <div className="field">
+            <label htmlFor="invite-name">Full name</label>
+            <input
+              id="invite-name"
+              onChange={(event) => setInviteName(event.target.value)}
+              placeholder="User name"
+              value={inviteName}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="invite-email">Email</label>
+            <input
+              id="invite-email"
+              inputMode="email"
+              onChange={(event) => setInviteEmail(event.target.value)}
+              placeholder="user@company.com"
+              type="email"
+              value={inviteEmail}
+            />
+          </div>
+          <button className="primary-button form-row-button" disabled={inviting} onClick={inviteUser} type="button">
+            {inviting ? 'Sending...' : 'Send invite'}
+          </button>
+        </div>
+
+        {inviteMessage ? <div className="notice">{inviteMessage}</div> : null}
+        {inviteError ? <div className="error">{inviteError}</div> : null}
       </div>
     </div>
   );

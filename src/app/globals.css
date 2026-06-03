@@ -259,6 +259,18 @@ input {
   padding: 10px 12px;
 }
 
+.form-row {
+  align-items: end;
+  display: grid;
+  gap: 12px;
+  grid-template-columns: 1fr 1fr auto;
+  margin-top: 16px;
+}
+
+.form-row-button {
+  min-height: 44px;
+}
+
 .notice {
   background: #eef8f1;
   border: 1px solid #cce8d5;
@@ -288,6 +300,10 @@ input {
   }
 
   .grid {
+    grid-template-columns: 1fr;
+  }
+
+  .form-row {
     grid-template-columns: 1fr;
   }
 }
