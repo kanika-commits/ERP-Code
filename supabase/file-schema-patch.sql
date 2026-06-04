@@ -73,4 +73,53 @@ begin
   ) then
     alter table public.files alter column storage_path drop not null;
   end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'original_filename'
+  ) then
+    alter table public.files alter column original_filename drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'stored_filename'
+  ) then
+    alter table public.files alter column stored_filename drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'file_url'
+  ) then
+    alter table public.files alter column file_url drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'file_size'
+  ) then
+    alter table public.files alter column file_size drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'storage_bucket'
+  ) then
+    alter table public.files alter column storage_bucket drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'access_level'
+  ) then
+    alter table public.files alter column access_level drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'migration_status'
+  ) then
+    alter table public.files alter column migration_status drop not null;
+  end if;
 end $$;
