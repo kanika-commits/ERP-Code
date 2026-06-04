@@ -219,6 +219,39 @@ textarea {
   vertical-align: top;
 }
 
+.file-groups {
+  display: grid;
+  gap: 22px;
+}
+
+.file-group {
+  border-top: 1px solid var(--line);
+  padding-top: 18px;
+}
+
+.file-group:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+
+.file-group-head {
+  align-items: flex-start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.file-group-head h3 {
+  font-size: 14px;
+  margin: 0 0 4px;
+}
+
+.file-group-head p {
+  color: var(--muted);
+  font-size: 13px;
+}
+
 .login-wrap {
   align-items: center;
   display: flex;

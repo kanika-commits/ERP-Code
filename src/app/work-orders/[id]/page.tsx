@@ -90,6 +90,15 @@ type WorkOrderFile = {
   url: string;
 };
 
+type FileCategory = 'work_order' | 'ra_bill' | 'invoice' | 'contractor_doc' | 'payment' | 'debit_note' | 'other';
+
+type FileGroup = {
+  category: FileCategory;
+  description: string;
+  files: WorkOrderFile[];
+  label: string;
+};
+
 function relationName<T extends { name: string }>(relation: T | T[] | null) {
   if (Array.isArray(relation)) return relation[0]?.name ?? '-';
   return relation?.name ?? '-';
@@ -120,6 +129,98 @@ function percent(value: number | null | undefined) {
 
 function sumBy<T>(rows: T[], getValue: (row: T) => number | null | undefined) {
   return rows.reduce((total, row) => total + (getValue(row) ?? 0), 0);
+}
+
+function extensionLabel(fileName: string) {
+  const extension = fileName.split('.').pop()?.toUpperCase();
+  if (!extension || extension === fileName.toUpperCase()) return 'File';
+  return extension;
+}
+
+function fileCategory(file: WorkOrderFile): FileCategory {
+  const path = file.url.toLowerCase();
+  const name = file.file_name.toLowerCase();
+
+  if (path.includes('/ra bills/') || name.includes('_ra') || name.includes(' ra-')) return 'ra_bill';
+  if (path.includes('/invoices/') || name.startsWith('invoice')) return 'invoice';
+  if (path.includes('/contractor docs/')) return 'contractor_doc';
+  if (path.includes('/payments/') || name.includes('payment')) return 'payment';
+  if (path.includes('/debit notes/') || name.includes('debit')) return 'debit_note';
+  if (name.includes('wo') || name.includes('work order')) return 'work_order';
+  return 'other';
+}
+
+function cleanFileName(fileName: string) {
+  return fileName
+    .replace(/\.[^.]+$/, '')
+    .replace(/^APPROVED[_ -]*/i, '')
+    .replace(/^INVOICE[_ -]*/i, '')
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function fileBelongsTo(file: WorkOrderFile) {
+  const category = fileCategory(file);
+  const name = cleanFileName(file.file_name);
+  const raMatch = name.match(/\b(?:RA|RA-)(?:\s|-)?0*(\d+)\b/i) || name.match(/\b(\d+)[-\s]*(?:V|B)?[-\s]*RA\b/i);
+  const invoiceMatch = name.match(/\b(?:DWI|TI|T)\S*(?:\s+\S+){0,4}/i);
+
+  if (category === 'work_order') return 'Work order document';
+  if (category === 'ra_bill') return raMatch ? `RA Bill ${raMatch[1]}` : 'RA bill';
+  if (category === 'invoice') return invoiceMatch ? `Invoice ${invoiceMatch[0]}` : 'Invoice';
+  if (category === 'contractor_doc') return 'Contractor document';
+  if (category === 'payment') return 'Payment document';
+  if (category === 'debit_note') return 'Debit note';
+  return 'Supporting file';
+}
+
+function groupFiles(files: WorkOrderFile[]): FileGroup[] {
+  const labels: Record<FileCategory, Omit<FileGroup, 'files'>> = {
+    work_order: {
+      category: 'work_order',
+      description: 'Signed work order and revision documents.',
+      label: 'Work Order Documents',
+    },
+    ra_bill: {
+      category: 'ra_bill',
+      description: 'RA bill PDFs and working sheets.',
+      label: 'RA Bill Files',
+    },
+    invoice: {
+      category: 'invoice',
+      description: 'Vendor invoice PDFs linked with this work order.',
+      label: 'Invoice Files',
+    },
+    contractor_doc: {
+      category: 'contractor_doc',
+      description: 'Vendor KYC, bank, GST, PAN, and support documents.',
+      label: 'Contractor Documents',
+    },
+    payment: {
+      category: 'payment',
+      description: 'Payment supporting documents.',
+      label: 'Payment Files',
+    },
+    debit_note: {
+      category: 'debit_note',
+      description: 'Debit note supporting documents.',
+      label: 'Debit Note Files',
+    },
+    other: {
+      category: 'other',
+      description: 'Other supporting documents.',
+      label: 'Other Files',
+    },
+  };
+
+  const order: FileCategory[] = ['work_order', 'ra_bill', 'invoice', 'payment', 'debit_note', 'contractor_doc', 'other'];
+  return order
+    .map((category) => ({
+      ...labels[category],
+      files: files.filter((file) => fileCategory(file) === category),
+    }))
+    .filter((group) => group.files.length);
 }
 
 function LedgerTable({ columns, emptyLabel, rows }: { columns: string[]; emptyLabel: string; rows: string[][] }) {
@@ -272,6 +373,7 @@ function WorkOrderDetailPageContent() {
   const paymentValue = sumBy(payments, (row) => row.total_payment);
   const totalWorkDone = sumBy(raBills, (row) => row.value_of_work_done);
   const debitNoteValue = sumBy(debitNotes, (row) => row.total_amount);
+  const fileGroups = groupFiles(files);
   const generatedOn = new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -416,41 +518,53 @@ function WorkOrderDetailPageContent() {
           <div className="section-head">
             <div>
               <h2>Attached Files</h2>
-              <p>Work order PDFs, RA bill files, invoices, and contractor documents linked to this ledger.</p>
+              <p>Files grouped by what they belong to in this work order.</p>
             </div>
             <span className="pill">{files.length} files</span>
           </div>
 
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>File</th>
-                  <th>Type</th>
-                  <th>Storage</th>
-                </tr>
-              </thead>
-              <tbody>
-                {files.length ? (
-                  files.map((file) => (
-                    <tr key={file.id}>
-                      <td>
-                        <a className="table-link table-link-strong" href={fileUrls[file.id] || file.url} rel="noreferrer" target="_blank">
-                          {file.file_name}
-                        </a>
-                      </td>
-                      <td>{file.mime_type || '-'}</td>
-                      <td>{file.storage_provider}</td>
-                    </tr>
-                  ))
-                ) : (
-                  <tr>
-                    <td colSpan={3}>No files linked yet.</td>
-                  </tr>
-                )}
-              </tbody>
-            </table>
-          </div>
+          {fileGroups.length ? (
+            <div className="file-groups">
+              {fileGroups.map((group) => (
+                <div className="file-group" key={group.category}>
+                  <div className="file-group-head">
+                    <div>
+                      <h3>{group.label}</h3>
+                      <p>{group.description}</p>
+                    </div>
+                    <span className="pill">{group.files.length} files</span>
+                  </div>
+
+                  <div className="table-wrap">
+                    <table className="data-table">
+                      <thead>
+                        <tr>
+                          <th>Belongs To</th>
+                          <th>File</th>
+                          <th>Format</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {group.files.map((file) => (
+                          <tr key={file.id}>
+                            <td>{fileBelongsTo(file)}</td>
+                            <td>
+                              <a className="table-link table-link-strong" href={fileUrls[file.id] || file.url} rel="noreferrer" target="_blank">
+                                {cleanFileName(file.file_name)}
+                              </a>
+                            </td>
+                            <td>{extensionLabel(file.file_name)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p>No files linked yet.</p>
+          )}
         </div>
 
         <div className="card">
