@@ -114,7 +114,7 @@ function UsersDirectory() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch('/.netlify/functions/invite-user', {
+    const response = await fetch('/api/invite-user', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session?.access_token ?? ''}`,
@@ -154,7 +154,7 @@ function UsersDirectory() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch('/.netlify/functions/assign-user-role', {
+    const response = await fetch('/api/assign-user-role', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session?.access_token ?? ''}`,

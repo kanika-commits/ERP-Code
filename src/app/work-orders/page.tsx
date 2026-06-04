@@ -179,7 +179,7 @@ function WorkOrderMasters() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch('/.netlify/functions/create-site', {
+    const response = await fetch('/api/create-site', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session?.access_token ?? ''}`,
@@ -222,7 +222,7 @@ function WorkOrderMasters() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch('/.netlify/functions/create-project', {
+    const response = await fetch('/api/create-project', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session?.access_token ?? ''}`,
@@ -264,7 +264,7 @@ function WorkOrderMasters() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch('/.netlify/functions/create-work-order', {
+    const response = await fetch('/api/create-work-order', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session?.access_token ?? ''}`,
@@ -313,7 +313,7 @@ function WorkOrderMasters() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch('/.netlify/functions/import-test-sheet-masters', {
+    const response = await fetch('/api/import-test-sheet-masters', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session?.access_token ?? ''}`,
@@ -351,7 +351,7 @@ function WorkOrderMasters() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch('/.netlify/functions/import-test-sheet-billing', {
+    const response = await fetch('/api/import-test-sheet-billing', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session?.access_token ?? ''}`,

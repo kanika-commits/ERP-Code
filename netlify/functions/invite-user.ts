@@ -6,7 +6,13 @@ type InviteRequest = {
   fullName?: string;
 };
 
-const siteUrl = process.env.URL || process.env.DEPLOY_URL || 'http://localhost:3000';
+function getSiteUrl() {
+  if (process.env.NEXT_PUBLIC_SITE_URL) return process.env.NEXT_PUBLIC_SITE_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  if (process.env.URL) return process.env.URL;
+  if (process.env.DEPLOY_URL) return process.env.DEPLOY_URL;
+  return 'http://localhost:3000';
+}
 
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
@@ -109,7 +115,7 @@ export const handler: Handler = async (event) => {
     data: {
       full_name: fullName || email,
     },
-    redirectTo: `${siteUrl}/dashboard`,
+    redirectTo: `${getSiteUrl()}/dashboard`,
   });
 
   if (error) {

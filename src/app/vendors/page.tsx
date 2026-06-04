@@ -71,7 +71,7 @@ function VendorsContent() {
       data: { session },
     } = await supabase.auth.getSession();
 
-    const response = await fetch('/.netlify/functions/create-vendor', {
+    const response = await fetch('/api/create-vendor', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${session?.access_token ?? ''}`,
