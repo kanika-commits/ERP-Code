@@ -66,7 +66,9 @@ textarea {
 
 .nav {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: center;
 }
 
 .nav a,
@@ -94,6 +96,13 @@ textarea {
 .ghost-button {
   background: var(--panel-soft);
   color: var(--ink);
+}
+
+.compact-button {
+  font-size: 12px;
+  min-height: 32px;
+  padding: 7px 10px;
+  text-decoration: none;
 }
 
 .primary-button {
@@ -367,6 +376,13 @@ textarea {
 
 .table-link-strong {
   font-size: 15px;
+}
+
+.row-actions {
+  align-items: flex-start;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .summary-grid {

@@ -412,6 +412,7 @@ function WorkOrderMasters() {
                     <th>Type</th>
                     <th>Total Value</th>
                     <th>Status</th>
+                    <th>Actions</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -422,14 +423,6 @@ function WorkOrderMasters() {
                           <Link className="table-link table-link-strong" href={`/work-orders/${workOrder.id}`}>
                             {workOrder.wo_number}
                           </Link>
-                          {workOrder.folder_url ? (
-                            <>
-                              <br />
-                              <a className="table-link" href={workOrder.folder_url} rel="noreferrer" target="_blank">
-                                Folder
-                              </a>
-                            </>
-                          ) : null}
                         </td>
                         <td>{relationName(workOrder.sites)}</td>
                         <td>{relationName(workOrder.projects)}</td>
@@ -439,11 +432,23 @@ function WorkOrderMasters() {
                         <td>
                           <span className="status-pill">{workOrder.status}</span>
                         </td>
+                        <td>
+                          <div className="row-actions">
+                            <Link className="ghost-button compact-button" href={`/work-orders/${workOrder.id}`}>
+                              View ledger
+                            </Link>
+                            {isAdmin && workOrder.folder_url ? (
+                              <a className="table-link" href={workOrder.folder_url} rel="noreferrer" target="_blank">
+                                Source folder
+                              </a>
+                            ) : null}
+                          </div>
+                        </td>
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={7}>No work orders created yet.</td>
+                      <td colSpan={8}>No work orders created yet.</td>
                     </tr>
                   )}
                 </tbody>
