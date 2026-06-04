@@ -33,6 +33,8 @@ function normalizeKey(value) {
 }
 
 async function main() {
+  await loadDotEnv('.env.vercel.production.local');
+  await loadDotEnv('.env.vercel.local');
   await loadDotEnv('.env.local');
 
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
