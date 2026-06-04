@@ -31,6 +31,7 @@ where ra_bill_no is null or ra_bill_number is null;
 create table if not exists public.invoices (
   id uuid primary key default gen_random_uuid(),
   work_order_id uuid references public.work_orders(id) on delete cascade,
+  vendor_id uuid references public.vendors(id),
   invoice_number text,
   invoice_date date,
   basic_value numeric(14, 2) not null default 0,
@@ -43,6 +44,7 @@ create table if not exists public.invoices (
 );
 
 alter table public.invoices add column if not exists work_order_id uuid references public.work_orders(id) on delete cascade;
+alter table public.invoices add column if not exists vendor_id uuid references public.vendors(id);
 alter table public.invoices add column if not exists invoice_number text;
 alter table public.invoices add column if not exists invoice_date date;
 alter table public.invoices add column if not exists basic_value numeric(14, 2) not null default 0;

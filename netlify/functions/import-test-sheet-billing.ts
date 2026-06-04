@@ -196,6 +196,7 @@ export const handler: Handler = async (event) => {
           itc_status: clean(row['ITC Claimed']) || null,
           remarks: clean(row.Remarks) || null,
           total_amount: numberFromSheet(row['Total Amount']),
+          vendor_id: workOrder.vendor_id,
           work_order_id: workOrder.id,
         };
       })
