@@ -24,6 +24,8 @@ export default function InvoicesPage() {
             dateKey="invoice_date"
             description="Review vendor invoices, GST, and ITC status across all work orders."
             emptyLabel="No invoices found."
+            fileMatchKey="invoice_number"
+            fileMode="invoice"
             orderBy="invoice_date"
             statusKey="itc_status"
             table="invoices"

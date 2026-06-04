@@ -392,7 +392,7 @@ textarea {
   border-radius: 8px;
   display: grid;
   gap: 12px;
-  grid-template-columns: minmax(180px, 1.2fr) repeat(5, minmax(130px, 1fr)) auto;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
   margin-bottom: 18px;
   padding: 14px;
 }
@@ -420,6 +420,12 @@ textarea {
 .module-filter-bar button:disabled {
   cursor: not-allowed;
   opacity: 0.45;
+}
+
+.exception-text {
+  color: #991b1b;
+  font-size: 13px;
+  font-weight: 700;
 }
 
 .summary-grid {

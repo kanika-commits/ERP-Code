@@ -24,6 +24,8 @@ export default function RaBillsPage() {
             dateKey="ra_bill_date"
             description="Review RA bill entries across all work orders."
             emptyLabel="No RA bills found."
+            fileMatchKey="ra_bill_no"
+            fileMode="ra_bill"
             orderBy="ra_bill_date"
             statusKey="status"
             table="ra_bills"
