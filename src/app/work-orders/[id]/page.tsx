@@ -242,10 +242,15 @@ function WorkOrderDetailPageContent() {
   const paymentValue = sumBy(payments, (row) => row.total_payment);
   const totalWorkDone = sumBy(raBills, (row) => row.value_of_work_done);
   const debitNoteValue = sumBy(debitNotes, (row) => row.total_amount);
+  const generatedOn = new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(new Date());
 
   return (
     <section className="page">
-      <div className="page-title page-title-row">
+      <div className="page-title page-title-row no-print">
         <div>
           <Link className="table-link" href="/work-orders">
             Back to Work Orders
@@ -255,12 +260,26 @@ function WorkOrderDetailPageContent() {
             {relationName(workOrder.sites)} | {relationName(workOrder.vendors)} | {workOrder.wo_type || 'Work order'}
           </p>
         </div>
-        <button className="ghost-button" disabled type="button">
+        <button className="ghost-button" onClick={() => window.print()} type="button">
           Download ledger
         </button>
       </div>
 
-      <div className="stack">
+      <div className="stack ledger-print">
+        <div className="ledger-header print-only">
+          <div>
+            <span>Work Order Ledger</span>
+            <h1>{workOrder.wo_number}</h1>
+            <p>
+              {relationName(workOrder.sites)} | {relationName(workOrder.vendors)}
+            </p>
+          </div>
+          <div>
+            <strong>MRC ERP</strong>
+            <span>Generated on {generatedOn}</span>
+          </div>
+        </div>
+
         <div className="card">
           <div className="section-head">
             <div>
@@ -271,6 +290,10 @@ function WorkOrderDetailPageContent() {
           </div>
 
           <div className="summary-grid">
+            <div className="summary-item">
+              <span>Work Order Number</span>
+              <strong>{workOrder.wo_number}</strong>
+            </div>
             <div className="summary-item">
               <span>Site</span>
               <strong>{relationName(workOrder.sites)}</strong>
@@ -326,7 +349,7 @@ function WorkOrderDetailPageContent() {
           <div className="section-head">
             <div>
               <h2>Ledger Totals</h2>
-              <p>Imported billing totals for this work order.</p>
+              <p>Billing totals for this work order.</p>
             </div>
             <span className="pill">{raBills.length + invoices.length + payments.length + debitNotes.length} entries</span>
           </div>
