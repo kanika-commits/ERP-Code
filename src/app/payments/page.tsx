@@ -13,11 +13,13 @@ export default function PaymentsPage() {
           <LedgerModulePage
             columns={[
               { key: 'payment_date', label: 'Payment Date', render: (record) => shortDate(record.payment_date) },
-              { key: 'amount_transferred', label: 'Transferred', render: (record) => money(record.amount_transferred) },
+              { key: 'amount_transferred', label: 'Net Transferred', render: (record) => money(record.amount_transferred) },
               { key: 'tds_amount', label: 'TDS', render: (record) => money(record.tds_amount) },
-              { key: 'total_payment', label: 'Total Payment', render: (record) => money(record.total_payment) },
+              { key: 'total_payment', label: 'Gross Payment', render: (record) => money(record.total_payment) },
             ]}
+            amountKey="total_payment"
             countLabel="payments"
+            dateKey="payment_date"
             description="Review payment transfers, TDS, and totals across all work orders."
             emptyLabel="No payments found."
             orderBy="payment_date"

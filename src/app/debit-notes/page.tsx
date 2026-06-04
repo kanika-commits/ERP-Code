@@ -17,10 +17,13 @@ export default function DebitNotesPage() {
               { key: 'total_amount', label: 'Total Amount', render: (record) => money(record.total_amount) },
               { key: 'reason', label: 'Reason' },
             ]}
+            amountKey="total_amount"
             countLabel="debit notes"
+            dateKey="debit_note_date"
             description="Review debit notes and adjustment reasons across all work orders."
             emptyLabel="No debit notes found."
             orderBy="debit_note_date"
+            statusKey="debit_note_type"
             table="debit_notes"
             title="Debit Notes"
           />

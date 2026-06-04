@@ -19,10 +19,13 @@ export default function RaBillsPage() {
               { key: 'amount_payable', label: 'Amount Payable', render: (record) => money(record.amount_payable) },
               { key: 'status', label: 'Status' },
             ]}
+            amountKey="amount_payable"
             countLabel="RA bills"
+            dateKey="ra_bill_date"
             description="Review RA bill entries across all work orders."
             emptyLabel="No RA bills found."
             orderBy="ra_bill_date"
+            statusKey="status"
             table="ra_bills"
             title="RA Bills"
           />
