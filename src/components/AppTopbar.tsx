@@ -33,6 +33,8 @@ export function AppTopbar() {
         <Link className={activeClass('/dashboard')} href="/dashboard">
           Dashboard
         </Link>
+        {canUseLedger ? <Link className={activeClass('/masters')} href="/masters">Masters</Link> : null}
+        {canUseLedger ? <Link className={activeClass('/reports')} href="/reports">Reports</Link> : null}
         {canUseLedger ? <Link className={activeClass('/projects')} href="/projects">Projects</Link> : null}
         {canUseLedger ? <Link className={activeClass('/contract-management')} href="/contract-management">Contracts</Link> : null}
         {canUseLedger ? <Link className={activeClass('/finance')} href="/finance">Finance</Link> : null}

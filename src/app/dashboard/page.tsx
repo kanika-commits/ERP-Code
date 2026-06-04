@@ -37,6 +37,18 @@ type SupabaseUserRoleRow = {
 
 const modules = [
   {
+    description: 'Central ERP lists for vendors, sites, projects, users, roles, files, and future control masters.',
+    href: '/masters',
+    name: 'Master Data',
+    status: 'Active',
+  },
+  {
+    description: 'Cross-module exceptions for outstanding, overbilling, missing documents, KYC gaps, GST, and ITC.',
+    href: '/reports',
+    name: 'Reports & Exceptions',
+    status: 'Active',
+  },
+  {
     description: 'Projects, sites, project dashboards, progress, documents, and project-level cost tracking.',
     href: '/projects',
     name: 'Project Management',
@@ -180,8 +192,8 @@ function DashboardContent({ userEmail }: { userEmail?: string }) {
 
         <article className="card">
           <h2>Next Build</h2>
-          <p>Admin users and role assignment come next, followed by vendor/site/project masters.</p>
-          <div className="metric">M1</div>
+          <p>Masters and exception reporting are active. Next comes deeper procurement, purchase, approval, and HR transaction schemas.</p>
+          <div className="metric">M2</div>
         </article>
       </div>
 
