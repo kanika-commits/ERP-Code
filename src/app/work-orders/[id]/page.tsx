@@ -43,6 +43,45 @@ type WorkOrderDetail = {
     | null;
 };
 
+type RaBill = {
+  id: string;
+  amount_payable: number;
+  gst_amount: number;
+  gst_rate: number;
+  ra_bill_date: string | null;
+  ra_bill_no: string;
+  security_amount: number;
+  status: string | null;
+  value_of_work_done: number;
+};
+
+type Invoice = {
+  id: string;
+  basic_value: number;
+  gst_amount: number;
+  gst_rate: number;
+  invoice_date: string | null;
+  invoice_number: string;
+  itc_status: string | null;
+  total_amount: number;
+};
+
+type Payment = {
+  id: string;
+  amount_transferred: number;
+  payment_date: string | null;
+  tds_amount: number;
+  total_payment: number;
+};
+
+type DebitNote = {
+  id: string;
+  debit_note_date: string | null;
+  debit_note_type: string | null;
+  reason: string | null;
+  total_amount: number;
+};
+
 function relationName<T extends { name: string }>(relation: T | T[] | null) {
   if (Array.isArray(relation)) return relation[0]?.name ?? '-';
   return relation?.name ?? '-';
@@ -56,7 +95,26 @@ function money(value: number | null | undefined) {
   }).format(value ?? 0);
 }
 
-function EmptyLedgerTable({ columns, label }: { columns: string[]; label: string }) {
+function shortDate(value: string | null | undefined) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat('en-IN', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function percent(value: number | null | undefined) {
+  return `${value ?? 0}%`;
+}
+
+function sumBy<T>(rows: T[], getValue: (row: T) => number | null | undefined) {
+  return rows.reduce((total, row) => total + (getValue(row) ?? 0), 0);
+}
+
+function LedgerTable({ columns, emptyLabel, rows }: { columns: string[]; emptyLabel: string; rows: string[][] }) {
   return (
     <div className="table-wrap">
       <table className="data-table">
@@ -68,9 +126,19 @@ function EmptyLedgerTable({ columns, label }: { columns: string[]; label: string
           </tr>
         </thead>
         <tbody>
-          <tr>
-            <td colSpan={columns.length}>{label}</td>
-          </tr>
+          {rows.length ? (
+            rows.map((row, rowIndex) => (
+              <tr key={`${row[0]}-${rowIndex}`}>
+                {row.map((cell, cellIndex) => (
+                  <td key={`${cell}-${cellIndex}`}>{cell}</td>
+                ))}
+              </tr>
+            ))
+          ) : (
+            <tr>
+              <td colSpan={columns.length}>{emptyLabel}</td>
+            </tr>
+          )}
         </tbody>
       </table>
     </div>
@@ -80,6 +148,10 @@ function EmptyLedgerTable({ columns, label }: { columns: string[]; label: string
 function WorkOrderDetailPageContent() {
   const params = useParams<{ id: string }>();
   const [workOrder, setWorkOrder] = useState<WorkOrderDetail | null>(null);
+  const [raBills, setRaBills] = useState<RaBill[]>([]);
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [payments, setPayments] = useState<Payment[]>([]);
+  const [debitNotes, setDebitNotes] = useState<DebitNote[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -98,7 +170,42 @@ function WorkOrderDetailPageContent() {
         setError(workOrderError.message);
         setWorkOrder(null);
       } else {
+        const [raResult, invoiceResult, paymentResult, debitNoteResult] = await Promise.all([
+          supabase
+            .from('ra_bills')
+            .select('id,ra_bill_no,ra_bill_date,value_of_work_done,security_amount,gst_rate,gst_amount,amount_payable,status')
+            .eq('work_order_id', params.id)
+            .order('ra_bill_date', { ascending: true }),
+          supabase
+            .from('invoices')
+            .select('id,invoice_number,invoice_date,basic_value,gst_rate,gst_amount,total_amount,itc_status')
+            .eq('work_order_id', params.id)
+            .order('invoice_date', { ascending: true }),
+          supabase
+            .from('payments')
+            .select('id,payment_date,amount_transferred,tds_amount,total_payment')
+            .eq('work_order_id', params.id)
+            .order('payment_date', { ascending: true }),
+          supabase
+            .from('debit_notes')
+            .select('id,debit_note_date,debit_note_type,total_amount,reason')
+            .eq('work_order_id', params.id)
+            .order('debit_note_date', { ascending: true }),
+        ]);
+
+        const ledgerError = raResult.error || invoiceResult.error || paymentResult.error || debitNoteResult.error;
+        if (ledgerError) {
+          setError(ledgerError.message);
+          setWorkOrder(null);
+          setLoading(false);
+          return;
+        }
+
         setWorkOrder(data as WorkOrderDetail);
+        setRaBills((raResult.data ?? []) as RaBill[]);
+        setInvoices((invoiceResult.data ?? []) as Invoice[]);
+        setPayments((paymentResult.data ?? []) as Payment[]);
+        setDebitNotes((debitNoteResult.data ?? []) as DebitNote[]);
       }
 
       setLoading(false);
@@ -129,6 +236,12 @@ function WorkOrderDetailPageContent() {
       </section>
     );
   }
+
+  const raBillPayable = sumBy(raBills, (row) => row.amount_payable);
+  const invoiceValue = sumBy(invoices, (row) => row.total_amount);
+  const paymentValue = sumBy(payments, (row) => row.total_payment);
+  const totalWorkDone = sumBy(raBills, (row) => row.value_of_work_done);
+  const debitNoteValue = sumBy(debitNotes, (row) => row.total_amount);
 
   return (
     <section className="page">
@@ -194,17 +307,17 @@ function WorkOrderDetailPageContent() {
         <div className="grid">
           <div className="card">
             <h2>RA Bills - Invoices</h2>
-            <div className="metric">{money(0)}</div>
+            <div className="metric">{money(raBillPayable - invoiceValue)}</div>
             <p>Total RA bill payable minus invoice value.</p>
           </div>
           <div className="card">
             <h2>RA Bills - Payments</h2>
-            <div className="metric">{money(0)}</div>
+            <div className="metric">{money(raBillPayable - paymentValue)}</div>
             <p>Total RA bill payable minus payments.</p>
           </div>
           <div className="card">
             <h2>Invoices - Payments</h2>
-            <div className="metric">{money(0)}</div>
+            <div className="metric">{money(invoiceValue - paymentValue)}</div>
             <p>Total invoice value minus payments.</p>
           </div>
         </div>
@@ -212,12 +325,61 @@ function WorkOrderDetailPageContent() {
         <div className="card">
           <div className="section-head">
             <div>
-              <h2>RA Bills</h2>
-              <p>Approved and pending RA bill records will appear here after import or entry.</p>
+              <h2>Ledger Totals</h2>
+              <p>Imported billing totals for this work order.</p>
             </div>
-            <span className="pill">0 entries</span>
+            <span className="pill">{raBills.length + invoices.length + payments.length + debitNotes.length} entries</span>
           </div>
-          <EmptyLedgerTable columns={['RA Bill No.', 'Date', 'Value of Work Done', 'Security', 'GST Rate', 'GST Amount', 'Amount Payable']} label="No RA bills added yet." />
+
+          <div className="summary-grid">
+            <div className="summary-item">
+              <span>Total Work Done</span>
+              <strong>{money(totalWorkDone)}</strong>
+            </div>
+            <div className="summary-item">
+              <span>Total Invoices</span>
+              <strong>{money(invoiceValue)}</strong>
+            </div>
+            <div className="summary-item">
+              <span>Total Payments</span>
+              <strong>{money(paymentValue)}</strong>
+            </div>
+            <div className="summary-item">
+              <span>Debit Notes</span>
+              <strong>{money(debitNoteValue)}</strong>
+            </div>
+            <div className="summary-item">
+              <span>RA Bills</span>
+              <strong>{raBills.length}</strong>
+            </div>
+            <div className="summary-item">
+              <span>Invoices</span>
+              <strong>{invoices.length}</strong>
+            </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="section-head">
+            <div>
+              <h2>RA Bills</h2>
+              <p>Approved and pending RA bill records for this work order.</p>
+            </div>
+            <span className="pill">{raBills.length} entries</span>
+          </div>
+          <LedgerTable
+            columns={['RA Bill No.', 'Date', 'Value of Work Done', 'Security', 'GST Rate', 'GST Amount', 'Amount Payable']}
+            emptyLabel="No RA bills added yet."
+            rows={raBills.map((row) => [
+              row.ra_bill_no,
+              shortDate(row.ra_bill_date),
+              money(row.value_of_work_done),
+              money(row.security_amount),
+              percent(row.gst_rate),
+              money(row.gst_amount),
+              money(row.amount_payable),
+            ])}
+          />
         </div>
 
         <div className="card">
@@ -226,9 +388,21 @@ function WorkOrderDetailPageContent() {
               <h2>Invoices</h2>
               <p>Vendor invoices and ITC status will appear here.</p>
             </div>
-            <span className="pill">0 entries</span>
+            <span className="pill">{invoices.length} entries</span>
           </div>
-          <EmptyLedgerTable columns={['Invoice Number', 'Invoice Date', 'Basic Value', 'GST Rate', 'GST', 'Total Amount', 'ITC Claimed']} label="No invoices added yet." />
+          <LedgerTable
+            columns={['Invoice Number', 'Invoice Date', 'Basic Value', 'GST Rate', 'GST', 'Total Amount', 'ITC Claimed']}
+            emptyLabel="No invoices added yet."
+            rows={invoices.map((row) => [
+              row.invoice_number,
+              shortDate(row.invoice_date),
+              money(row.basic_value),
+              percent(row.gst_rate),
+              money(row.gst_amount),
+              money(row.total_amount),
+              row.itc_status || '-',
+            ])}
+          />
         </div>
 
         <div className="card">
@@ -237,9 +411,19 @@ function WorkOrderDetailPageContent() {
               <h2>Payments</h2>
               <p>Payment and TDS entries will appear here.</p>
             </div>
-            <span className="pill">0 entries</span>
+            <span className="pill">{payments.length} entries</span>
           </div>
-          <EmptyLedgerTable columns={['Payment Date', 'Vendor', 'Amount Transferred', 'TDS', 'Total Payment']} label="No payments added yet." />
+          <LedgerTable
+            columns={['Payment Date', 'Vendor', 'Amount Transferred', 'TDS', 'Total Payment']}
+            emptyLabel="No payments added yet."
+            rows={payments.map((row) => [
+              shortDate(row.payment_date),
+              relationName(workOrder.vendors),
+              money(row.amount_transferred),
+              money(row.tds_amount),
+              money(row.total_payment),
+            ])}
+          />
         </div>
 
         <div className="card">
@@ -248,9 +432,13 @@ function WorkOrderDetailPageContent() {
               <h2>Debit Notes</h2>
               <p>Debit note records and reasons will appear here.</p>
             </div>
-            <span className="pill">0 entries</span>
+            <span className="pill">{debitNotes.length} entries</span>
           </div>
-          <EmptyLedgerTable columns={['Debit Note Date', 'DN Type', 'Total Amount', 'Reason']} label="No debit notes added yet." />
+          <LedgerTable
+            columns={['Debit Note Date', 'DN Type', 'Total Amount', 'Reason']}
+            emptyLabel="No debit notes added yet."
+            rows={debitNotes.map((row) => [shortDate(row.debit_note_date), row.debit_note_type || '-', money(row.total_amount), row.reason || '-'])}
+          />
         </div>
       </div>
     </section>
@@ -269,4 +457,3 @@ export default function WorkOrderDetailPage() {
     </ProtectedPage>
   );
 }
-

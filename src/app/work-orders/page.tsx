@@ -119,6 +119,7 @@ function WorkOrderMasters() {
   const [createError, setCreateError] = useState('');
   const [creating, setCreating] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [billingImporting, setBillingImporting] = useState(false);
 
   async function loadMasters() {
     setLoading(true);
@@ -341,6 +342,42 @@ function WorkOrderMasters() {
     loadMasters();
   }
 
+  async function importTestSheetBilling() {
+    setMessage('');
+    setCreateError('');
+    setBillingImporting(true);
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch('/.netlify/functions/import-test-sheet-billing', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+      },
+    });
+
+    const result = (await response.json()) as {
+      error?: string;
+      message?: string;
+      raBillsImported?: number;
+      invoicesImported?: number;
+      paymentsImported?: number;
+      debitNotesImported?: number;
+    };
+    setBillingImporting(false);
+
+    if (!response.ok) {
+      setCreateError(result.error ?? 'Could not import billing data.');
+      return;
+    }
+
+    setMessage(
+      `${result.message ?? 'Billing import complete'} RA bills ${result.raBillsImported ?? 0}, invoices ${result.invoicesImported ?? 0}, payments ${result.paymentsImported ?? 0}, debit notes ${result.debitNotesImported ?? 0}.`,
+    );
+  }
+
   const projectsForSelectedSite = projects.filter((project) => !woSiteId || project.site_id === woSiteId);
 
   return (
@@ -424,11 +461,16 @@ function WorkOrderMasters() {
               <div className="import-banner">
                 <div>
                   <strong>Copied sheet import</strong>
-                  <span>Import test vendors, sites, and work orders from the copied Google Sheet.</span>
+                  <span>Import test vendors, sites, work orders, and billing ledgers from the copied Google Sheet.</span>
                 </div>
-                <button className="ghost-button" disabled={importing || creating} onClick={importTestSheetMasters} type="button">
-                  {importing ? 'Importing...' : 'Import test sheet'}
-                </button>
+                <div className="button-cluster">
+                  <button className="ghost-button" disabled={importing || creating || billingImporting} onClick={importTestSheetMasters} type="button">
+                    {importing ? 'Importing...' : 'Import masters'}
+                  </button>
+                  <button className="ghost-button" disabled={importing || creating || billingImporting} onClick={importTestSheetBilling} type="button">
+                    {billingImporting ? 'Importing...' : 'Import billing'}
+                  </button>
+                </div>
               </div>
 
               <div className="form-grid">

@@ -342,6 +342,13 @@ textarea {
   font-size: 13px;
 }
 
+.button-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .form-row {
   align-items: end;
   display: grid;
