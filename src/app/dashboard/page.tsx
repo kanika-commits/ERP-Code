@@ -38,9 +38,9 @@ type SupabaseUserRoleRow = {
 const modules = [
   {
     description: 'Projects, sites, project dashboards, progress, documents, and project-level cost tracking.',
-    href: '',
+    href: '/projects',
     name: 'Project Management',
-    status: 'Planned',
+    status: 'Active',
   },
   {
     description: 'Work orders, RA bills, invoices, payments, debit notes, files, approvals, and ledgers.',
@@ -49,22 +49,28 @@ const modules = [
     status: 'Active',
   },
   {
-    description: 'Vendor requests, quotations, comparative statements, purchase orders, and delivery tracking.',
-    href: '',
-    name: 'Procurement & Purchase',
-    status: 'Planned',
+    description: 'Vendor requests, RFQs, quotations, comparative statements, and procurement approvals.',
+    href: '/procurement',
+    name: 'Procurement',
+    status: 'Active',
+  },
+  {
+    description: 'Purchase orders, delivery/receipt tracking, vendor bills, and three-way matching.',
+    href: '/purchase',
+    name: 'Purchase',
+    status: 'Active',
   },
   {
     description: 'Payables, receivables, GST/ITC, TDS, bank payments, reconciliations, and finance reports.',
-    href: '',
+    href: '/finance',
     name: 'Finance & Accounts',
-    status: 'Next',
+    status: 'Active',
   },
   {
     description: 'Employees, attendance, leave, payroll, reimbursements, documents, and internal HR workflows.',
-    href: '',
+    href: '/hr',
     name: 'HR',
-    status: 'Planned',
+    status: 'Active',
   },
   {
     description: 'Users, roles, permissions, number formats, approval rules, audit logs, and company settings.',
@@ -185,7 +191,7 @@ function DashboardContent({ userEmail }: { userEmail?: string }) {
             <h2>ERP Modules</h2>
             <p>Build the ERP module by module, starting with the contract workflows already imported from Sheets and Drive.</p>
           </div>
-          <span className="pill">6 modules</span>
+          <span className="pill">{modules.length} modules</span>
         </div>
 
         <div className="module-grid">

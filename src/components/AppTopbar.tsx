@@ -33,13 +33,12 @@ export function AppTopbar() {
         <Link className={activeClass('/dashboard')} href="/dashboard">
           Dashboard
         </Link>
+        {canUseLedger ? <Link className={activeClass('/projects')} href="/projects">Projects</Link> : null}
         {canUseLedger ? <Link className={activeClass('/contract-management')} href="/contract-management">Contracts</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/work-orders')} href="/work-orders">Work Orders</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/ra-bills')} href="/ra-bills">RA Bills</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/invoices')} href="/invoices">Invoices</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/payments')} href="/payments">Payments</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/debit-notes')} href="/debit-notes">Debit Notes</Link> : null}
-        {isAdmin ? <Link className={activeClass('/vendors')} href="/vendors">Vendors</Link> : null}
+        {canUseLedger ? <Link className={activeClass('/finance')} href="/finance">Finance</Link> : null}
+        {canUseLedger ? <Link className={activeClass('/procurement')} href="/procurement">Procurement</Link> : null}
+        {canUseLedger ? <Link className={activeClass('/purchase')} href="/purchase">Purchase</Link> : null}
+        {canUseLedger ? <Link className={activeClass('/hr')} href="/hr">HR</Link> : null}
         {isAdmin ? <Link className={activeClass('/admin/users')} href="/admin/users">Users</Link> : null}
       </nav>
 
