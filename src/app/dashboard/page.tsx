@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { AppTopbar } from '@/components/AppTopbar';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { ROLE_LABELS, type RoleCode } from '@/lib/roles';
@@ -33,6 +34,45 @@ type SupabaseUserRoleRow = {
       }[]
     | null;
 };
+
+const modules = [
+  {
+    description: 'Projects, sites, project dashboards, progress, documents, and project-level cost tracking.',
+    href: '',
+    name: 'Project Management',
+    status: 'Planned',
+  },
+  {
+    description: 'Work orders, RA bills, invoices, payments, debit notes, files, approvals, and ledgers.',
+    href: '/contract-management',
+    name: 'Contract Management',
+    status: 'Active',
+  },
+  {
+    description: 'Vendor requests, quotations, comparative statements, purchase orders, and delivery tracking.',
+    href: '',
+    name: 'Procurement & Purchase',
+    status: 'Planned',
+  },
+  {
+    description: 'Payables, receivables, GST/ITC, TDS, bank payments, reconciliations, and finance reports.',
+    href: '',
+    name: 'Finance & Accounts',
+    status: 'Next',
+  },
+  {
+    description: 'Employees, attendance, leave, payroll, reimbursements, documents, and internal HR workflows.',
+    href: '',
+    name: 'HR',
+    status: 'Planned',
+  },
+  {
+    description: 'Users, roles, permissions, number formats, approval rules, audit logs, and company settings.',
+    href: '/admin/users',
+    name: 'Admin & Settings',
+    status: 'Active',
+  },
+];
 
 function DashboardContent({ userEmail }: { userEmail?: string }) {
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -137,6 +177,40 @@ function DashboardContent({ userEmail }: { userEmail?: string }) {
           <p>Admin users and role assignment come next, followed by vendor/site/project masters.</p>
           <div className="metric">M1</div>
         </article>
+      </div>
+
+      <div className="card">
+        <div className="section-head">
+          <div>
+            <h2>ERP Modules</h2>
+            <p>Build the ERP module by module, starting with the contract workflows already imported from Sheets and Drive.</p>
+          </div>
+          <span className="pill">6 modules</span>
+        </div>
+
+        <div className="module-grid">
+          {modules.map((module) => {
+            const content = (
+              <>
+                <div className="module-card-head">
+                  <h3>{module.name}</h3>
+                  <span className={`module-status module-status-${module.status.toLowerCase()}`}>{module.status}</span>
+                </div>
+                <p>{module.description}</p>
+              </>
+            );
+
+            return module.href ? (
+              <Link className="module-card module-card-active" href={module.href} key={module.name}>
+                {content}
+              </Link>
+            ) : (
+              <article className="module-card" key={module.name}>
+                {content}
+              </article>
+            );
+          })}
+        </div>
       </div>
     </section>
   );
