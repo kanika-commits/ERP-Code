@@ -92,13 +92,6 @@ type WorkOrderFile = {
 
 type FileCategory = 'work_order' | 'ra_bill' | 'invoice' | 'contractor_doc' | 'payment' | 'debit_note' | 'other';
 
-type FileGroup = {
-  category: FileCategory;
-  description: string;
-  files: WorkOrderFile[];
-  label: string;
-};
-
 function relationName<T extends { name: string }>(relation: T | T[] | null) {
   if (Array.isArray(relation)) return relation[0]?.name ?? '-';
   return relation?.name ?? '-';
@@ -131,6 +124,12 @@ function sumBy<T>(rows: T[], getValue: (row: T) => number | null | undefined) {
   return rows.reduce((total, row) => total + (getValue(row) ?? 0), 0);
 }
 
+function normalizeIdentifier(value: string | null | undefined) {
+  return String(value || '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '');
+}
+
 function extensionLabel(fileName: string) {
   const extension = fileName.split('.').pop()?.toUpperCase();
   if (!extension || extension === fileName.toUpperCase()) return 'File';
@@ -160,67 +159,55 @@ function cleanFileName(fileName: string) {
     .trim();
 }
 
-function fileBelongsTo(file: WorkOrderFile) {
-  const category = fileCategory(file);
-  const name = cleanFileName(file.file_name);
-  const raMatch = name.match(/\b(?:RA|RA-)(?:\s|-)?0*(\d+)\b/i) || name.match(/\b(\d+)[-\s]*(?:V|B)?[-\s]*RA\b/i);
-  const invoiceMatch = name.match(/\b(?:DWI|TI|T)\S*(?:\s+\S+){0,4}/i);
-
-  if (category === 'work_order') return 'Work order document';
-  if (category === 'ra_bill') return raMatch ? `RA Bill ${raMatch[1]}` : 'RA bill';
-  if (category === 'invoice') return invoiceMatch ? `Invoice ${invoiceMatch[0]}` : 'Invoice';
-  if (category === 'contractor_doc') return 'Contractor document';
-  if (category === 'payment') return 'Payment document';
-  if (category === 'debit_note') return 'Debit note';
-  return 'Supporting file';
+function raBillSerial(value: string | null | undefined) {
+  const text = String(value || '');
+  const match = text.match(/\d+/);
+  return match ? String(Number(match[0])) : '';
 }
 
-function groupFiles(files: WorkOrderFile[]): FileGroup[] {
-  const labels: Record<FileCategory, Omit<FileGroup, 'files'>> = {
-    work_order: {
-      category: 'work_order',
-      description: 'Signed work order and revision documents.',
-      label: 'Work Order Documents',
-    },
-    ra_bill: {
-      category: 'ra_bill',
-      description: 'RA bill PDFs and working sheets.',
-      label: 'RA Bill Files',
-    },
-    invoice: {
-      category: 'invoice',
-      description: 'Vendor invoice PDFs linked with this work order.',
-      label: 'Invoice Files',
-    },
-    contractor_doc: {
-      category: 'contractor_doc',
-      description: 'Vendor KYC, bank, GST, PAN, and support documents.',
-      label: 'Contractor Documents',
-    },
-    payment: {
-      category: 'payment',
-      description: 'Payment supporting documents.',
-      label: 'Payment Files',
-    },
-    debit_note: {
-      category: 'debit_note',
-      description: 'Debit note supporting documents.',
-      label: 'Debit Note Files',
-    },
-    other: {
-      category: 'other',
-      description: 'Other supporting documents.',
-      label: 'Other Files',
-    },
-  };
+function raBillSerialFromFile(file: WorkOrderFile) {
+  const name = cleanFileName(file.file_name);
+  const raMatch = name.match(/\bRA[-\s]?0*(\d+)\b/i);
+  if (raMatch) return String(Number(raMatch[1]));
 
-  const order: FileCategory[] = ['work_order', 'ra_bill', 'invoice', 'payment', 'debit_note', 'contractor_doc', 'other'];
-  return order
-    .map((category) => ({
-      ...labels[category],
-      files: files.filter((file) => fileCategory(file) === category),
-    }))
-    .filter((group) => group.files.length);
+  const revisionMatch = name.match(/\b(\d+)[-\s]?[A-Z]\b/i);
+  if (revisionMatch) return String(Number(revisionMatch[1]));
+
+  const numberBeforeRa = name.match(/\b(\d+)\s+RA\b/i);
+  if (numberBeforeRa) return String(Number(numberBeforeRa[1]));
+
+  return '';
+}
+
+function filesForRaBill(files: WorkOrderFile[], raBill: RaBill) {
+  const serial = raBillSerial(raBill.ra_bill_no);
+  if (!serial) return [];
+  return files.filter((file) => fileCategory(file) === 'ra_bill' && raBillSerialFromFile(file) === serial);
+}
+
+function filesForInvoice(files: WorkOrderFile[], invoice: Invoice) {
+  const invoiceKey = normalizeIdentifier(invoice.invoice_number);
+  if (!invoiceKey) return [];
+  return files.filter((file) => fileCategory(file) === 'invoice' && normalizeIdentifier(file.file_name).includes(invoiceKey));
+}
+
+function filesByCategory(files: WorkOrderFile[], category: FileCategory) {
+  return files.filter((file) => fileCategory(file) === category);
+}
+
+function FileLinks({ emptyLabel, fileUrls, files }: { emptyLabel: string; fileUrls: Record<string, string>; files: WorkOrderFile[] }) {
+  if (!files.length) return <span className="muted-text">{emptyLabel}</span>;
+
+  return (
+    <div className="file-link-list">
+      {files.map((file) => (
+        <a className="file-chip" href={fileUrls[file.id] || file.url} key={file.id} rel="noreferrer" target="_blank">
+          <span>{cleanFileName(file.file_name)}</span>
+          <small>{extensionLabel(file.file_name)}</small>
+        </a>
+      ))}
+    </div>
+  );
 }
 
 function LedgerTable({ columns, emptyLabel, rows }: { columns: string[]; emptyLabel: string; rows: string[][] }) {
@@ -373,7 +360,9 @@ function WorkOrderDetailPageContent() {
   const paymentValue = sumBy(payments, (row) => row.total_payment);
   const totalWorkDone = sumBy(raBills, (row) => row.value_of_work_done);
   const debitNoteValue = sumBy(debitNotes, (row) => row.total_amount);
-  const fileGroups = groupFiles(files);
+  const workOrderFiles = filesByCategory(files, 'work_order');
+  const contractorFiles = filesByCategory(files, 'contractor_doc');
+  const otherFiles = files.filter((file) => ['payment', 'debit_note', 'other'].includes(fileCategory(file)));
   const generatedOn = new Intl.DateTimeFormat('en-IN', {
     day: '2-digit',
     month: 'short',
@@ -517,100 +506,126 @@ function WorkOrderDetailPageContent() {
         <div className="card">
           <div className="section-head">
             <div>
-              <h2>Attached Files</h2>
-              <p>Files grouped by what they belong to in this work order.</p>
-            </div>
-            <span className="pill">{files.length} files</span>
-          </div>
-
-          {fileGroups.length ? (
-            <div className="file-groups">
-              {fileGroups.map((group) => (
-                <div className="file-group" key={group.category}>
-                  <div className="file-group-head">
-                    <div>
-                      <h3>{group.label}</h3>
-                      <p>{group.description}</p>
-                    </div>
-                    <span className="pill">{group.files.length} files</span>
-                  </div>
-
-                  <div className="table-wrap">
-                    <table className="data-table">
-                      <thead>
-                        <tr>
-                          <th>Belongs To</th>
-                          <th>File</th>
-                          <th>Format</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.files.map((file) => (
-                          <tr key={file.id}>
-                            <td>{fileBelongsTo(file)}</td>
-                            <td>
-                              <a className="table-link table-link-strong" href={fileUrls[file.id] || file.url} rel="noreferrer" target="_blank">
-                                {cleanFileName(file.file_name)}
-                              </a>
-                            </td>
-                            <td>{extensionLabel(file.file_name)}</td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p>No files linked yet.</p>
-          )}
-        </div>
-
-        <div className="card">
-          <div className="section-head">
-            <div>
               <h2>RA Bills</h2>
-              <p>Approved and pending RA bill records for this work order.</p>
+              <p>Each RA bill row includes the supporting PDFs and working sheets attached to that bill.</p>
             </div>
             <span className="pill">{raBills.length} entries</span>
           </div>
-          <LedgerTable
-            columns={['RA Bill No.', 'Date', 'Value of Work Done', 'Security', 'GST Rate', 'GST Amount', 'Amount Payable']}
-            emptyLabel="No RA bills added yet."
-            rows={raBills.map((row) => [
-              row.ra_bill_no,
-              shortDate(row.ra_bill_date),
-              money(row.value_of_work_done),
-              money(row.security_amount),
-              percent(row.gst_rate),
-              money(row.gst_amount),
-              money(row.amount_payable),
-            ])}
-          />
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>RA Bill No.</th>
+                  <th>Date</th>
+                  <th>Value of Work Done</th>
+                  <th>GST</th>
+                  <th>Amount Payable</th>
+                  <th>Files</th>
+                </tr>
+              </thead>
+              <tbody>
+                {raBills.length ? (
+                  raBills.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.ra_bill_no}</td>
+                      <td>{shortDate(row.ra_bill_date)}</td>
+                      <td>{money(row.value_of_work_done)}</td>
+                      <td>
+                        {percent(row.gst_rate)}
+                        <br />
+                        <span className="muted-text">{money(row.gst_amount)}</span>
+                      </td>
+                      <td>{money(row.amount_payable)}</td>
+                      <td>
+                        <FileLinks emptyLabel="No files" fileUrls={fileUrls} files={filesForRaBill(files, row)} />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={6}>No RA bills added yet.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </div>
 
         <div className="card">
           <div className="section-head">
             <div>
               <h2>Invoices</h2>
-              <p>Vendor invoices and ITC status will appear here.</p>
+              <p>Each invoice row includes the invoice file attached to that invoice number.</p>
             </div>
             <span className="pill">{invoices.length} entries</span>
           </div>
-          <LedgerTable
-            columns={['Invoice Number', 'Invoice Date', 'Basic Value', 'GST Rate', 'GST', 'Total Amount', 'ITC Claimed']}
-            emptyLabel="No invoices added yet."
-            rows={invoices.map((row) => [
-              row.invoice_number,
-              shortDate(row.invoice_date),
-              money(row.basic_value),
-              percent(row.gst_rate),
-              money(row.gst_amount),
-              money(row.total_amount),
-              row.itc_status || '-',
-            ])}
-          />
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Invoice Number</th>
+                  <th>Invoice Date</th>
+                  <th>Basic Value</th>
+                  <th>GST</th>
+                  <th>Total Amount</th>
+                  <th>ITC</th>
+                  <th>Files</th>
+                </tr>
+              </thead>
+              <tbody>
+                {invoices.length ? (
+                  invoices.map((row) => (
+                    <tr key={row.id}>
+                      <td>{row.invoice_number}</td>
+                      <td>{shortDate(row.invoice_date)}</td>
+                      <td>{money(row.basic_value)}</td>
+                      <td>
+                        {percent(row.gst_rate)}
+                        <br />
+                        <span className="muted-text">{money(row.gst_amount)}</span>
+                      </td>
+                      <td>{money(row.total_amount)}</td>
+                      <td>{row.itc_status || '-'}</td>
+                      <td>
+                        <FileLinks emptyLabel="No file" fileUrls={fileUrls} files={filesForInvoice(files, row)} />
+                      </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={7}>No invoices added yet.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="section-head">
+            <div>
+              <h2>Supporting Documents</h2>
+              <p>Work order documents and vendor KYC files that support the full ledger.</p>
+            </div>
+            <span className="pill">{workOrderFiles.length + contractorFiles.length + otherFiles.length} files</span>
+          </div>
+
+          <div className="support-doc-grid">
+            <div>
+              <h3>Work Order Documents</h3>
+              <FileLinks emptyLabel="No work order files" fileUrls={fileUrls} files={workOrderFiles} />
+            </div>
+            <div>
+              <h3>Contractor Documents</h3>
+              <FileLinks emptyLabel="No contractor documents" fileUrls={fileUrls} files={contractorFiles} />
+            </div>
+            {otherFiles.length ? (
+              <div>
+                <h3>Other Files</h3>
+                <FileLinks emptyLabel="No other files" fileUrls={fileUrls} files={otherFiles} />
+              </div>
+            ) : null}
+          </div>
         </div>
 
         <div className="card">
