@@ -82,6 +82,14 @@ type DebitNote = {
   total_amount: number;
 };
 
+type WorkOrderFile = {
+  id: string;
+  file_name: string;
+  mime_type: string | null;
+  storage_provider: string;
+  url: string;
+};
+
 function relationName<T extends { name: string }>(relation: T | T[] | null) {
   if (Array.isArray(relation)) return relation[0]?.name ?? '-';
   return relation?.name ?? '-';
@@ -152,6 +160,7 @@ function WorkOrderDetailPageContent() {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
   const [debitNotes, setDebitNotes] = useState<DebitNote[]>([]);
+  const [files, setFiles] = useState<WorkOrderFile[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -170,7 +179,7 @@ function WorkOrderDetailPageContent() {
         setError(workOrderError.message);
         setWorkOrder(null);
       } else {
-        const [raResult, invoiceResult, paymentResult, debitNoteResult] = await Promise.all([
+        const [raResult, invoiceResult, paymentResult, debitNoteResult, fileResult] = await Promise.all([
           supabase
             .from('ra_bills')
             .select('id,ra_bill_no,ra_bill_date,value_of_work_done,security_amount,gst_rate,gst_amount,amount_payable,status')
@@ -191,9 +200,15 @@ function WorkOrderDetailPageContent() {
             .select('id,debit_note_date,debit_note_type,total_amount,reason')
             .eq('work_order_id', params.id)
             .order('debit_note_date', { ascending: true }),
+          supabase
+            .from('files')
+            .select('id,file_name,mime_type,storage_provider,url')
+            .eq('entity_type', 'work_order')
+            .eq('entity_id', params.id)
+            .order('file_name', { ascending: true }),
         ]);
 
-        const ledgerError = raResult.error || invoiceResult.error || paymentResult.error || debitNoteResult.error;
+        const ledgerError = raResult.error || invoiceResult.error || paymentResult.error || debitNoteResult.error || fileResult.error;
         if (ledgerError) {
           setError(ledgerError.message);
           setWorkOrder(null);
@@ -206,6 +221,7 @@ function WorkOrderDetailPageContent() {
         setInvoices((invoiceResult.data ?? []) as Invoice[]);
         setPayments((paymentResult.data ?? []) as Payment[]);
         setDebitNotes((debitNoteResult.data ?? []) as DebitNote[]);
+        setFiles((fileResult.data ?? []) as WorkOrderFile[]);
       }
 
       setLoading(false);
@@ -379,6 +395,47 @@ function WorkOrderDetailPageContent() {
               <span>Invoices</span>
               <strong>{invoices.length}</strong>
             </div>
+          </div>
+        </div>
+
+        <div className="card">
+          <div className="section-head">
+            <div>
+              <h2>Attached Files</h2>
+              <p>Work order PDFs, RA bill files, invoices, and contractor documents linked to this ledger.</p>
+            </div>
+            <span className="pill">{files.length} files</span>
+          </div>
+
+          <div className="table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>File</th>
+                  <th>Type</th>
+                  <th>Storage</th>
+                </tr>
+              </thead>
+              <tbody>
+                {files.length ? (
+                  files.map((file) => (
+                    <tr key={file.id}>
+                      <td>
+                        <a className="table-link table-link-strong" href={file.url} rel="noreferrer" target="_blank">
+                          {file.file_name}
+                        </a>
+                      </td>
+                      <td>{file.mime_type || '-'}</td>
+                      <td>{file.storage_provider}</td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan={3}>No files linked yet.</td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
 

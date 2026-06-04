@@ -6,3 +6,5 @@ node_modules
 dist
 out
 npm-debug.log*
+.DS_Store
+imports/
