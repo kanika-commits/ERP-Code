@@ -14,6 +14,7 @@ create table if not exists public.ra_bills (
 
 alter table public.ra_bills add column if not exists work_order_id uuid references public.work_orders(id) on delete cascade;
 alter table public.ra_bills add column if not exists ra_bill_no text;
+alter table public.ra_bills add column if not exists ra_bill_number text;
 alter table public.ra_bills add column if not exists status text not null default 'pending';
 alter table public.ra_bills add column if not exists ra_bill_date date;
 alter table public.ra_bills add column if not exists value_of_work_done numeric(14, 2) not null default 0;
@@ -22,6 +23,10 @@ alter table public.ra_bills add column if not exists gst_rate numeric(5, 2) not 
 alter table public.ra_bills add column if not exists gst_amount numeric(14, 2) not null default 0;
 alter table public.ra_bills add column if not exists amount_payable numeric(14, 2) not null default 0;
 alter table public.ra_bills add column if not exists created_at timestamptz not null default now();
+update public.ra_bills
+set ra_bill_no = coalesce(ra_bill_no, ra_bill_number),
+    ra_bill_number = coalesce(ra_bill_number, ra_bill_no)
+where ra_bill_no is null or ra_bill_number is null;
 
 create table if not exists public.invoices (
   id uuid primary key default gen_random_uuid(),

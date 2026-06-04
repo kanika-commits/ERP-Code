@@ -174,6 +174,7 @@ export const handler: Handler = async (event) => {
           gst_rate: numberFromSheet(row['GST Rate']),
           ra_bill_date: parseDate(row['RA Bill Date']),
           ra_bill_no: clean(row['RA Bill No.']),
+          ra_bill_number: clean(row['RA Bill No.']),
           security_amount: numberFromSheet(row.Security),
           status: clean(row['Approved Remark']) || 'Approved',
           value_of_work_done: numberFromSheet(row['Value of Work Done']),
