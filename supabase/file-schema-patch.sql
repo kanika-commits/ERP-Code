@@ -43,3 +43,34 @@ on public.files (entity_type, entity_id);
 
 create unique index if not exists files_work_order_url_key
 on public.files (entity_type, entity_id, url);
+
+do $$
+begin
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'owner_type'
+  ) then
+    alter table public.files alter column owner_type drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'owner_id'
+  ) then
+    alter table public.files alter column owner_id drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'bucket_name'
+  ) then
+    alter table public.files alter column bucket_name drop not null;
+  end if;
+
+  if exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'files' and column_name = 'storage_path'
+  ) then
+    alter table public.files alter column storage_path drop not null;
+  end if;
+end $$;
