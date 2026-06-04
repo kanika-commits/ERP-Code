@@ -161,6 +161,7 @@ function WorkOrderDetailPageContent() {
   const [payments, setPayments] = useState<Payment[]>([]);
   const [debitNotes, setDebitNotes] = useState<DebitNote[]>([]);
   const [files, setFiles] = useState<WorkOrderFile[]>([]);
+  const [fileUrls, setFileUrls] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -221,7 +222,20 @@ function WorkOrderDetailPageContent() {
         setInvoices((invoiceResult.data ?? []) as Invoice[]);
         setPayments((paymentResult.data ?? []) as Payment[]);
         setDebitNotes((debitNoteResult.data ?? []) as DebitNote[]);
-        setFiles((fileResult.data ?? []) as WorkOrderFile[]);
+        const linkedFiles = (fileResult.data ?? []) as WorkOrderFile[];
+        setFiles(linkedFiles);
+
+        const signedUrls = await Promise.all(
+          linkedFiles.map(async (file) => {
+            if (file.storage_provider !== 'supabase_storage') {
+              return [file.id, file.url] as const;
+            }
+
+            const { data: signedUrlData } = await supabase.storage.from('work-order-files').createSignedUrl(file.url, 10 * 60);
+            return [file.id, signedUrlData?.signedUrl || ''] as const;
+          }),
+        );
+        setFileUrls(Object.fromEntries(signedUrls.filter(([, url]) => Boolean(url))));
       }
 
       setLoading(false);
@@ -421,7 +435,7 @@ function WorkOrderDetailPageContent() {
                   files.map((file) => (
                     <tr key={file.id}>
                       <td>
-                        <a className="table-link table-link-strong" href={file.url} rel="noreferrer" target="_blank">
+                        <a className="table-link table-link-strong" href={fileUrls[file.id] || file.url} rel="noreferrer" target="_blank">
                           {file.file_name}
                         </a>
                       </td>
