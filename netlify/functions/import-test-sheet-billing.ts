@@ -22,6 +22,16 @@ function isInsertRow(row: InsertRow | null): row is InsertRow {
   return row !== null;
 }
 
+function errorMessage(error: unknown) {
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object') {
+    const record = error as Record<string, unknown>;
+    return String(record.message || record.details || record.hint || JSON.stringify(error));
+  }
+  return 'Billing import failed.';
+}
+
 function numberFromSheet(value: string | null | undefined) {
   const text = clean(value).replace(/,/g, '').replace(/%/g, '');
   const parsed = Number(text);
@@ -223,12 +233,17 @@ export const handler: Handler = async (event) => {
     const workOrderIds = (workOrders || []).map((workOrder) => workOrder.id);
 
     if (workOrderIds.length) {
-      await Promise.all([
+      const deleteResults = await Promise.all([
         supabaseAdmin.from('ra_bills').delete().in('work_order_id', workOrderIds),
         supabaseAdmin.from('invoices').delete().in('work_order_id', workOrderIds),
         supabaseAdmin.from('payments').delete().in('work_order_id', workOrderIds),
         supabaseAdmin.from('debit_notes').delete().in('work_order_id', workOrderIds),
       ]);
+
+      const deleteError = deleteResults.find((result) => result.error)?.error;
+      if (deleteError) {
+        throw new Error(`Could not clear old billing rows: ${errorMessage(deleteError)}`);
+      }
     }
 
     const insertResults = await Promise.all([
@@ -239,7 +254,9 @@ export const handler: Handler = async (event) => {
     ]);
 
     const insertError = insertResults.find((result) => result.error)?.error;
-    if (insertError) throw insertError;
+    if (insertError) {
+      throw new Error(`Could not insert billing rows: ${errorMessage(insertError)}`);
+    }
 
     return json(200, {
       message: 'Imported copied sheet billing data.',
@@ -249,6 +266,6 @@ export const handler: Handler = async (event) => {
       debitNotesImported: debitNotes.length,
     });
   } catch (error) {
-    return json(500, { error: error instanceof Error ? error.message : 'Billing import failed.' });
+    return json(500, { error: errorMessage(error) });
   }
 };
