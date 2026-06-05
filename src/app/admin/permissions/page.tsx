@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppTopbar } from '@/components/AppTopbar';
 import { ProtectedPage } from '@/components/ProtectedPage';
-import { accessActions, accessModules, permissionCode } from '@/lib/accessControl';
+import { accessActions, accessModules } from '@/lib/accessControl';
 import { ROLE_LABELS } from '@/lib/roles';
 import { supabase } from '@/lib/supabase';
 import { useCurrentUserAccess } from '@/lib/useCurrentUserAccess';
@@ -29,6 +29,7 @@ type PermissionRow = {
 type RolePermissionRow = {
   permission_id: string;
   role_id: string;
+  allowed: boolean;
 };
 
 type CompanyRow = {
@@ -83,7 +84,11 @@ function PermissionsBuilder() {
   const rolePermissionIds = useMemo(() => {
     const role = roles.find((item) => item.code === selectedRoleCode);
     if (!role) return new Set<string>();
-    return new Set(rolePermissions.filter((item) => item.role_id === role.id).map((item) => item.permission_id));
+    return new Set(
+  rolePermissions
+    .filter((item) => item.role_id === role.id && item.allowed)
+    .map((item) => item.permission_id)
+);
   }, [rolePermissions, roles, selectedRoleCode]);
 
   async function loadBuilderData() {
@@ -93,7 +98,7 @@ function PermissionsBuilder() {
     const [roleResult, permissionResult, rolePermissionResult, companyResult, siteResult] = await Promise.all([
       supabase.from('roles').select('id,code,name,description,is_system').order('name', { ascending: true }),
       supabase.from('permissions').select('id,code,module_code,resource,action,name,is_sensitive').order('module_code', { ascending: true }),
-      supabase.from('role_permissions').select('role_id,permission_id'),
+      supabase.from('role_permissions').select('role_id,permission_id,allowed'),
       supabase.from('companies').select('id,company_code,name').order('name', { ascending: true }),
       supabase.from('sites').select('id,name,company_id').order('name', { ascending: true }),
     ]);
@@ -409,22 +414,29 @@ function PermissionsBuilder() {
                     <strong>{module.name}</strong>
                   </td>
                   {accessActions.map((action) => {
-                    const code = permissionCode(module.code, action);
-                    const permission = permissions.find((item) => item.code === code);
-                    const checked = selectedPermissionCodes.has(code);
-                    return (
-                      <td key={code}>
-                        {permission ? (
-                          <label className="matrix-check">
-                            <input checked={checked} onChange={() => togglePermission(code)} type="checkbox" />
-                            <span className={permission.is_sensitive ? 'danger-pill' : 'status-pill'}>{code}</span>
-                          </label>
-                        ) : (
-                          <span className="muted-text">-</span>
-                        )}
-                      </td>
-                    );
-                  })}
+  const permission = permissions.find(
+    (item) => item.resource === module.code && item.action === action
+  );
+
+  const code = permission?.code ?? `${module.code}.${action}`;
+  const checked = permission ? selectedPermissionCodes.has(permission.code) : false;
+
+  return (
+    <td key={code}>
+      {permission ? (
+        <label className="matrix-check">
+          <input
+            checked={checked}
+            onChange={() => togglePermission(permission.code)}
+            type="checkbox"
+          />
+        </label>
+      ) : (
+        <span className="muted-text">-</span>
+      )}
+    </td>
+  );
+})}
                 </tr>
               ))}
             </tbody>
