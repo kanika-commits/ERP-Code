@@ -85,8 +85,9 @@ function PermissionsBuilder() {
     const role = roles.find((item) => item.code === selectedRoleCode);
     if (!role) return new Set<string>();
     return new Set(
+  return new Set(
   rolePermissions
-    .filter((item) => item.role_id === role.id && item.allowed)
+    .filter((item) => item.role_id === role.id && item.allowed === true)
     .map((item) => item.permission_id)
 );
   }, [rolePermissions, roles, selectedRoleCode]);
@@ -414,11 +415,8 @@ function PermissionsBuilder() {
                     <strong>{module.name}</strong>
                   </td>
                   {accessActions.map((action) => {
-  const permission = permissions.find(
-    (item) => item.resource === module.code && item.action === action
-  );
-
-  const code = permission?.code ?? `${module.code}.${action}`;
+  const code = permissionCode(module.code, action);
+  const permission = permissions.find((item) => item.code === code);
   const checked = permission ? selectedPermissionCodes.has(permission.code) : false;
 
   return (
