@@ -165,16 +165,17 @@ export const handler: Handler = async (event) => {
     );
 
     const raBills: InsertRow[] = raRows
-      .map<InsertRow | null>((row) => {
+      .map<InsertRow | null>((row, index) => {
         const workOrder = workOrderByNumber.get(normalizeKey(row['WO Number']));
-        if (!workOrder || !clean(row['RA Bill No.'])) return null;
+        if (!workOrder) return null;
+        const raBillNumber = clean(row['RA Bill No.']) || clean(row[' ']) || `Imported-${index + 1}`;
         return {
           amount_payable: numberFromSheet(row['Amount Payable']),
           gst_amount: numberFromSheet(row['GST Amount']),
           gst_rate: numberFromSheet(row['GST Rate']),
           ra_bill_date: parseDate(row['RA Bill Date']),
-          ra_bill_no: clean(row['RA Bill No.']),
-          ra_bill_number: clean(row['RA Bill No.']),
+          ra_bill_no: raBillNumber,
+          ra_bill_number: raBillNumber,
           security_amount: numberFromSheet(row.Security),
           status: clean(row['Approved Remark']) || 'Approved',
           value_of_work_done: numberFromSheet(row['Value of Work Done']),
