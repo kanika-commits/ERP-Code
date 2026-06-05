@@ -1,19 +1,6 @@
-export type RoleCode =
-  | 'platform_owner'
-  | 'company_owner'
-  | 'super_admin'
-  | 'admin'
-  | 'module_admin'
-  | 'manager'
-  | 'project_manager'
-  | 'site_engineer'
-  | 'accounts'
-  | 'approver'
-  | 'staff'
-  | 'vendor'
-  | 'viewer';
+export type RoleCode = string;
 
-export const ROLE_LABELS: Record<RoleCode, string> = {
+export const ROLE_LABELS: Record<string, string> = {
   platform_owner: 'Platform Owner',
   company_owner: 'Company Owner',
   super_admin: 'Super Admin',

@@ -8,8 +8,13 @@ import { useCurrentUserAccess } from '@/lib/useCurrentUserAccess';
 
 function ModulesContent() {
   const { companyName, error, loading, modules } = useEnabledModules();
-  const { isAdmin } = useCurrentUserAccess();
-  const visibleModules = modules.filter((module) => module.code !== 'admin' || isAdmin);
+  const { isAdmin, isSuperAdmin } = useCurrentUserAccess();
+  const unfinishedModules = new Set(['procurement', 'purchase', 'hr']);
+  const visibleModules = modules.filter((module) => {
+    if (module.code === 'admin' && !isAdmin) return false;
+    if (unfinishedModules.has(module.code) && !isSuperAdmin) return false;
+    return true;
+  });
 
   return (
     <section className="page">

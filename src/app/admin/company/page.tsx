@@ -16,6 +16,16 @@ type CompanyRow = {
   status: string;
 };
 
+type SiteRow = {
+  address: string | null;
+  company_id: string | null;
+  id: string;
+  location: string | null;
+  name: string;
+  site_code: string | null;
+  status: string;
+};
+
 type ModuleSettingRow = {
   enabled: boolean;
   erp_modules:
@@ -38,9 +48,24 @@ function normalizeModule(row: ModuleSettingRow) {
 function CompanySettings() {
   const { isAdmin, isPlatformOwner, loading: loadingAccess } = useCurrentUserAccess();
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
+  const [sites, setSites] = useState<SiteRow[]>([]);
   const [enabledCodes, setEnabledCodes] = useState<Set<string>>(new Set(erpModules.map((module) => module.code)));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [companyName, setCompanyName] = useState('');
+  const [companyCode, setCompanyCode] = useState('');
+  const [companyLegalName, setCompanyLegalName] = useState('');
+  const [companyDomain, setCompanyDomain] = useState('');
+  const [editingCompanyId, setEditingCompanyId] = useState('');
+  const [siteName, setSiteName] = useState('');
+  const [siteCode, setSiteCode] = useState('');
+  const [siteLocation, setSiteLocation] = useState('');
+  const [siteAddress, setSiteAddress] = useState('');
+  const [siteCompanyId, setSiteCompanyId] = useState('');
+  const [editingSiteId, setEditingSiteId] = useState('');
+  const [masterMessage, setMasterMessage] = useState('');
+  const [masterError, setMasterError] = useState('');
+  const [savingMaster, setSavingMaster] = useState('');
   const [moduleMessage, setModuleMessage] = useState('');
   const [moduleError, setModuleError] = useState('');
   const [savingModuleCode, setSavingModuleCode] = useState('');
@@ -59,16 +84,25 @@ function CompanySettings() {
         .select('id,company_code,name,legal_name,email_domain,status')
         .order('created_at', { ascending: true });
 
+      const { data: siteData, error: siteError } = await supabase
+        .from('sites')
+        .select('id,company_id,site_code,name,location,address,status')
+        .order('name', { ascending: true });
+
       if (!mounted) return;
 
-      if (companyError) {
-        setError(companyError.message);
+      if (companyError || siteError) {
+        setError(companyError?.message || siteError?.message || 'Could not load company setup.');
         setLoading(false);
         return;
       }
 
       setCompanies(companyData ?? []);
+      setSites((siteData ?? []) as SiteRow[]);
       const currentCompany = companyData?.[0];
+      if (currentCompany) {
+        setSiteCompanyId((current) => current || currentCompany.id);
+      }
 
       if (!currentCompany) {
         setLoading(false);
@@ -102,6 +136,105 @@ function CompanySettings() {
       mounted = false;
     };
   }, []);
+
+  async function postJson(url: string, body: Record<string, unknown>) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = (await response.json()) as { error?: string; message?: string };
+
+    if (!response.ok) {
+      throw new Error(result.error ?? 'Action failed.');
+    }
+
+    return result.message ?? 'Saved.';
+  }
+
+  function editCompany(company: CompanyRow) {
+    setEditingCompanyId(company.id);
+    setCompanyName(company.name);
+    setCompanyCode(company.company_code);
+    setCompanyLegalName(company.legal_name || '');
+    setCompanyDomain(company.email_domain || '');
+    setMasterMessage(`Editing ${company.name}.`);
+    setMasterError('');
+  }
+
+  async function saveCompany() {
+    setSavingMaster('company');
+    setMasterMessage('');
+    setMasterError('');
+
+    try {
+      const message = await postJson('/api/upsert-company', {
+        companyCode,
+        companyId: editingCompanyId || undefined,
+        emailDomain: companyDomain,
+        legalName: companyLegalName,
+        name: companyName,
+      });
+      setMasterMessage(message);
+      setEditingCompanyId('');
+      setCompanyName('');
+      setCompanyCode('');
+      setCompanyLegalName('');
+      setCompanyDomain('');
+      window.location.reload();
+    } catch (saveError) {
+      setMasterError(saveError instanceof Error ? saveError.message : 'Could not save company.');
+    } finally {
+      setSavingMaster('');
+    }
+  }
+
+  function editSite(site: SiteRow) {
+    setEditingSiteId(site.id);
+    setSiteName(site.name);
+    setSiteCode(site.site_code || '');
+    setSiteLocation(site.location || '');
+    setSiteAddress(site.address || '');
+    setSiteCompanyId(site.company_id || currentCompany?.id || '');
+    setMasterMessage(`Editing ${site.name}.`);
+    setMasterError('');
+  }
+
+  async function saveSite() {
+    setSavingMaster('site');
+    setMasterMessage('');
+    setMasterError('');
+
+    try {
+      const message = await postJson('/api/upsert-site', {
+        address: siteAddress,
+        companyId: siteCompanyId,
+        location: siteLocation,
+        name: siteName,
+        siteCode,
+        siteId: editingSiteId || undefined,
+      });
+      setMasterMessage(message);
+      setEditingSiteId('');
+      setSiteName('');
+      setSiteCode('');
+      setSiteLocation('');
+      setSiteAddress('');
+      window.location.reload();
+    } catch (saveError) {
+      setMasterError(saveError instanceof Error ? saveError.message : 'Could not save site.');
+    } finally {
+      setSavingMaster('');
+    }
+  }
 
   async function toggleModule(moduleCode: string, enabled: boolean) {
     if (!currentCompany) {
@@ -181,6 +314,7 @@ function CompanySettings() {
                 <th>Code</th>
                 <th>Domain</th>
                 <th>Status</th>
+                <th>Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -196,6 +330,11 @@ function CompanySettings() {
                     <td>
                       <span className="status-pill">{company.status}</span>
                     </td>
+                    <td>
+                      <button className="ghost-button compact-button" onClick={() => editCompany(company)} type="button">
+                        Edit
+                      </button>
+                    </td>
                   </tr>
                 ))
               ) : (
@@ -206,11 +345,121 @@ function CompanySettings() {
                   <td>
                     <span className="status-pill">pending SQL</span>
                   </td>
+                  <td>-</td>
                 </tr>
               )}
             </tbody>
           </table>
         </div>
+
+        <div className="divider" />
+        <h3>{editingCompanyId ? 'Edit Company' : 'Create Company'}</h3>
+        <div className="form-grid">
+          <div className="field">
+            <label htmlFor="company-name">Company name</label>
+            <input id="company-name" onChange={(event) => setCompanyName(event.target.value)} value={companyName} />
+          </div>
+          <div className="field">
+            <label htmlFor="company-code">Company code</label>
+            <input id="company-code" disabled={Boolean(editingCompanyId)} onChange={(event) => setCompanyCode(event.target.value)} value={companyCode} />
+          </div>
+          <div className="field">
+            <label htmlFor="company-legal">Legal name</label>
+            <input id="company-legal" onChange={(event) => setCompanyLegalName(event.target.value)} value={companyLegalName} />
+          </div>
+          <div className="field">
+            <label htmlFor="company-domain">Email domain</label>
+            <input id="company-domain" onChange={(event) => setCompanyDomain(event.target.value)} placeholder="mrcgroup.in" value={companyDomain} />
+          </div>
+        </div>
+        <button className="primary-button action-row" disabled={savingMaster === 'company'} onClick={saveCompany} type="button">
+          {savingMaster === 'company' ? 'Saving...' : editingCompanyId ? 'Update company' : 'Create company'}
+        </button>
+      </div>
+
+      <div className="card">
+        <div className="section-head">
+          <div>
+            <h2>Site Master</h2>
+            <p>Sites belong to companies. User access can later be scoped to one or multiple sites.</p>
+          </div>
+          <span className="pill">{sites.length} sites</span>
+        </div>
+
+        <div className="table-wrap">
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th>Site</th>
+                <th>Code</th>
+                <th>Company</th>
+                <th>Location</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sites.length ? (
+                sites.map((site) => (
+                  <tr key={site.id}>
+                    <td>{site.name}</td>
+                    <td>{site.site_code || '-'}</td>
+                    <td>{companies.find((company) => company.id === site.company_id)?.name || 'Not linked'}</td>
+                    <td>{site.location || '-'}</td>
+                    <td>
+                      <span className="status-pill">{site.status}</span>
+                    </td>
+                    <td>
+                      <button className="ghost-button compact-button" onClick={() => editSite(site)} type="button">
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan={6}>No sites created yet.</td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="divider" />
+        <h3>{editingSiteId ? 'Edit Site' : 'Create Site'}</h3>
+        <div className="form-grid">
+          <div className="field">
+            <label htmlFor="site-company">Company</label>
+            <select id="site-company" onChange={(event) => setSiteCompanyId(event.target.value)} value={siteCompanyId}>
+              {companies.map((company) => (
+                <option key={company.id} value={company.id}>
+                  {company.name}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="field">
+            <label htmlFor="site-name">Site name</label>
+            <input id="site-name" onChange={(event) => setSiteName(event.target.value)} value={siteName} />
+          </div>
+          <div className="field">
+            <label htmlFor="site-code">Site code</label>
+            <input id="site-code" onChange={(event) => setSiteCode(event.target.value)} value={siteCode} />
+          </div>
+          <div className="field">
+            <label htmlFor="site-location">Location</label>
+            <input id="site-location" onChange={(event) => setSiteLocation(event.target.value)} value={siteLocation} />
+          </div>
+          <div className="field form-grid-wide">
+            <label htmlFor="site-address">Address</label>
+            <input id="site-address" onChange={(event) => setSiteAddress(event.target.value)} value={siteAddress} />
+          </div>
+        </div>
+        <button className="primary-button action-row" disabled={savingMaster === 'site'} onClick={saveSite} type="button">
+          {savingMaster === 'site' ? 'Saving...' : editingSiteId ? 'Update site' : 'Create site'}
+        </button>
+        {masterMessage ? <div className="notice">{masterMessage}</div> : null}
+        {masterError ? <div className="error">{masterError}</div> : null}
       </div>
 
       <div className="card">

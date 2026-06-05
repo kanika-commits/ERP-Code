@@ -535,6 +535,21 @@ textarea {
   grid-column: 1 / -1;
 }
 
+.form-grid-wide {
+  grid-column: 1 / -1;
+}
+
+.inline-field {
+  min-width: 220px;
+}
+
+.divider {
+  background: var(--line);
+  height: 1px;
+  margin: 22px 0;
+  width: 100%;
+}
+
 .table-link {
   color: var(--brand);
   font-size: 13px;
@@ -675,6 +690,45 @@ textarea {
   display: grid;
   gap: 12px;
   grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.check-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin-top: 16px;
+}
+
+.check-grid > div {
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.check-row,
+.matrix-check {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.check-row {
+  color: var(--ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.matrix-check {
+  flex-wrap: wrap;
+}
+
+.matrix-check input,
+.check-row input {
+  height: 16px;
+  width: 16px;
 }
 
 .import-banner {
