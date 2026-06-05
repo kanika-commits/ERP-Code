@@ -20,28 +20,22 @@ export function AppTopbar() {
     return isActive ? 'active' : undefined;
   }
 
-  const canUseLedger = isInternal || isVendor;
+  const canUseWorkspace = isInternal || isVendor;
 
   return (
     <header className="topbar">
-      <Link className="brand" href="/dashboard">
+      <Link className="brand" href="/modules">
         <strong>MRC ERP</strong>
-        <span>Development workspace</span>
+        <span>Module directory</span>
       </Link>
 
       <nav className="nav" aria-label="ERP navigation">
         <Link className={activeClass('/dashboard')} href="/dashboard">
           Dashboard
         </Link>
-        {canUseLedger ? <Link className={activeClass('/masters')} href="/masters">Masters</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/reports')} href="/reports">Reports</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/projects')} href="/projects">Projects</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/contract-management')} href="/contract-management">Contracts</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/finance')} href="/finance">Finance</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/procurement')} href="/procurement">Procurement</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/purchase')} href="/purchase">Purchase</Link> : null}
-        {canUseLedger ? <Link className={activeClass('/hr')} href="/hr">HR</Link> : null}
-        {isAdmin ? <Link className={activeClass('/admin/users')} href="/admin/users">Users</Link> : null}
+        {canUseWorkspace ? <Link className={activeClass('/modules')} href="/modules">Modules</Link> : null}
+        {canUseWorkspace ? <Link className={activeClass('/reports')} href="/reports">Reports</Link> : null}
+        {isAdmin ? <Link className={activeClass('/admin/users')} href="/admin/users">Admin</Link> : null}
       </nav>
 
       <button className="ghost-button" type="button" onClick={signOut}>
