@@ -267,7 +267,11 @@ function PermissionsBuilder() {
     else next.add(value);
     setter(next);
   }
-
+console.log('ROLES', roles);
+console.log('PERMISSIONS', permissions);
+console.log('ROLE PERMISSIONS', rolePermissions);
+console.log('SELECTED ROLE', selectedRoleCode);
+console.log('SELECTED PERMISSION CODES', Array.from(selectedPermissionCodes));
   if (loadingAccess || loading) {
     return <div className="card">Loading access control...</div>;
   }
