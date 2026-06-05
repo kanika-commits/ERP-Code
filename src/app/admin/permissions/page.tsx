@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { AppTopbar } from '@/components/AppTopbar';
 import { ProtectedPage } from '@/components/ProtectedPage';
-import { accessActions, accessModules } from '@/lib/accessControl';
+import { accessActions, accessModules, permissionCode } from '@/lib/accessControl';
 import { ROLE_LABELS } from '@/lib/roles';
 import { supabase } from '@/lib/supabase';
 import { useCurrentUserAccess } from '@/lib/useCurrentUserAccess';
