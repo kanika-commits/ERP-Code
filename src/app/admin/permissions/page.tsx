@@ -82,15 +82,15 @@ function PermissionsBuilder() {
   const selectedRole = roles.find((role) => role.code === selectedRoleCode);
 
   const rolePermissionIds = useMemo(() => {
-    const role = roles.find((item) => item.code === selectedRoleCode);
-    if (!role) return new Set<string>();
-    return new Set(
+  const role = roles.find((item) => item.code === selectedRoleCode);
+  if (!role) return new Set<string>();
+
   return new Set(
-  rolePermissions
-    .filter((item) => item.role_id === role.id && item.allowed === true)
-    .map((item) => item.permission_id)
-);
-  }, [rolePermissions, roles, selectedRoleCode]);
+    rolePermissions
+      .filter((item) => item.role_id === role.id && item.allowed === true)
+      .map((item) => item.permission_id)
+  );
+}, [rolePermissions, roles, selectedRoleCode]);
 
   async function loadBuilderData() {
     setLoading(true);
