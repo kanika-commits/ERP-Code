@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { AppTopbar } from '@/components/AppTopbar';
 import { ProtectedPage } from '@/components/ProtectedPage';
 import { supabase } from '@/lib/supabase';
@@ -144,7 +145,11 @@ function VendorsContent() {
                   {vendors.length ? (
                     vendors.map((vendor) => (
                       <tr key={vendor.id}>
-                        <td>{vendor.name}</td>
+                        <td>
+                          <Link className="table-link table-link-strong" href={`/vendors/${vendor.id}`}>
+                            {vendor.name}
+                          </Link>
+                        </td>
                         <td>{vendor.vendor_code || '-'}</td>
                         <td>
                           {vendor.contact_name || '-'}
