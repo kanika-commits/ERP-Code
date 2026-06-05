@@ -232,6 +232,41 @@ textarea {
   color: var(--muted);
 }
 
+.module-switch-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.module-switch {
+  align-items: flex-start;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 112px;
+  padding: 14px;
+}
+
+.module-switch-enabled {
+  background: #f7fbf8;
+  border-color: #cce8d5;
+}
+
+.module-switch h3 {
+  font-size: 14px;
+  margin: 0 0 6px;
+}
+
+.module-switch p {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0;
+}
+
 .metric {
   color: var(--good);
   font-size: 28px;

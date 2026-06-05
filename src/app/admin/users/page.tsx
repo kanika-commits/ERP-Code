@@ -342,6 +342,17 @@ export default function UsersPage() {
               <h1>Users</h1>
               <p>Manage internal MRC users and vendor-scoped ERP access.</p>
             </div>
+            {isAdmin ? (
+              <div className="import-banner">
+                <div>
+                  <strong>Company and module setup</strong>
+                  <span>Use this before onboarding another company or switching modules on/off.</span>
+                </div>
+                <a className="ghost-button compact-button" href="/admin/company">
+                  Open company setup
+                </a>
+              </div>
+            ) : null}
             {loading ? (
               <div className="card">Checking access...</div>
             ) : isAdmin ? (

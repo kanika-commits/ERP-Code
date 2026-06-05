@@ -109,13 +109,21 @@ export const handler: Handler = async (event) => {
     return json(404, { error: `Role not found: ${roleCode}` });
   }
 
-  const { error: profileError } = await supabaseAdmin.from('profiles').upsert({
+  const { data: company } = await supabaseAdmin.from('companies').select('id').eq('company_code', 'mrc').maybeSingle();
+
+  const profilePayload: Record<string, string | null> = {
     id: targetUser.id,
     full_name: fullName || targetUser.user_metadata?.full_name || email,
     email,
     status: 'active',
     updated_at: new Date().toISOString(),
-  });
+  };
+
+  if (company?.id) {
+    profilePayload.company_id = company.id;
+  }
+
+  const { error: profileError } = await supabaseAdmin.from('profiles').upsert(profilePayload);
 
   if (profileError) {
     return json(500, { error: profileError.message });

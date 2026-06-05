@@ -35,7 +35,7 @@ export function AppTopbar() {
         </Link>
         {canUseWorkspace ? <Link className={activeClass('/modules')} href="/modules">Modules</Link> : null}
         {canUseWorkspace ? <Link className={activeClass('/reports')} href="/reports">Reports</Link> : null}
-        {isAdmin ? <Link className={activeClass('/admin/users')} href="/admin/users">Admin</Link> : null}
+        {isAdmin ? <Link className={activeClass('/admin')} href="/admin/users">Admin</Link> : null}
       </nav>
 
       <button className="ghost-button" type="button" onClick={signOut}>

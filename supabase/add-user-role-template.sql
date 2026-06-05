@@ -8,7 +8,9 @@ declare
   target_role_code text := 'viewer';
   target_scope_type text := 'global';
   target_scope_id uuid := '00000000-0000-0000-0000-000000000000';
+  target_company_code text := 'mrc';
   target_vendor_id uuid := null;
+  target_company_id uuid;
   target_user_id uuid;
   target_role_id uuid;
 begin
@@ -32,10 +34,17 @@ begin
     raise exception 'Role not found: %', target_role_code;
   end if;
 
-  insert into public.profiles (id, full_name, email, status, vendor_id)
-  values (target_user_id, target_full_name, target_email, 'active', target_vendor_id)
+  select id
+    into target_company_id
+  from public.companies
+  where company_code = target_company_code
+  limit 1;
+
+  insert into public.profiles (id, company_id, full_name, email, status, vendor_id)
+  values (target_user_id, target_company_id, target_full_name, target_email, 'active', target_vendor_id)
   on conflict (id) do update
-    set full_name = excluded.full_name,
+    set company_id = excluded.company_id,
+        full_name = excluded.full_name,
         email = excluded.email,
         status = 'active',
         vendor_id = excluded.vendor_id,
