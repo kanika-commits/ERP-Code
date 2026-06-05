@@ -353,6 +353,17 @@ export default function UsersPage() {
                 </a>
               </div>
             ) : null}
+            {isAdmin ? (
+              <div className="import-banner">
+                <div>
+                  <strong>Permission setup</strong>
+                  <span>Review role templates, permission actions, and the user-specific override model.</span>
+                </div>
+                <a className="ghost-button compact-button" href="/admin/permissions">
+                  Open permissions
+                </a>
+              </div>
+            ) : null}
             {loading ? (
               <div className="card">Checking access...</div>
             ) : isAdmin ? (

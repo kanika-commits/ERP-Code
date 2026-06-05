@@ -303,6 +303,17 @@ textarea {
   white-space: nowrap;
 }
 
+.danger-pill {
+  background: #fff0f0;
+  border-radius: 999px;
+  color: #9b1c1c;
+  display: inline-flex;
+  font-size: 13px;
+  font-weight: 800;
+  padding: 6px 10px;
+  white-space: nowrap;
+}
+
 .table-wrap {
   overflow-x: auto;
 }
@@ -324,6 +335,26 @@ textarea {
   border-bottom: 1px solid var(--line);
   padding: 12px 14px;
   vertical-align: top;
+}
+
+.permission-matrix td {
+  min-width: 132px;
+}
+
+.permission-matrix th:first-child,
+.permission-matrix td:first-child {
+  left: 0;
+  min-width: 170px;
+  position: sticky;
+  z-index: 1;
+}
+
+.permission-matrix th:first-child {
+  background: var(--panel-soft);
+}
+
+.permission-matrix td:first-child {
+  background: var(--panel);
 }
 
 .file-groups {
@@ -560,6 +591,16 @@ textarea {
   font-size: 16px;
 }
 
+.summary-item p {
+  font-size: 13px;
+}
+
+.role-template-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
 .import-banner {
   align-items: center;
   background: #f8fafc;
@@ -686,7 +727,8 @@ textarea {
   }
 
   .summary-grid,
-  .module-summary-grid {
+  .module-summary-grid,
+  .role-template-grid {
     grid-template-columns: 1fr;
   }
 

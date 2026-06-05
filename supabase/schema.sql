@@ -177,15 +177,71 @@ create table if not exists public.company_modules (
   unique (company_id, module_id)
 );
 
+create table if not exists public.permissions (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  module_code text not null,
+  resource text not null,
+  action text not null,
+  name text not null,
+  description text,
+  is_sensitive boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.role_permissions (
+  id uuid primary key default gen_random_uuid(),
+  role_id uuid not null references public.roles(id) on delete cascade,
+  permission_id uuid not null references public.permissions(id) on delete cascade,
+  effect text not null default 'allow' check (effect in ('allow', 'deny')),
+  created_at timestamptz not null default now(),
+  unique (role_id, permission_id)
+);
+
+create table if not exists public.user_access_assignments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role_id uuid not null references public.roles(id) on delete cascade,
+  company_id uuid references public.companies(id) on delete cascade,
+  module_code text,
+  scope_type text not null default 'company' check (scope_type in ('global', 'company', 'site', 'project', 'vendor')),
+  scope_id uuid,
+  status text not null default 'active',
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.user_permission_overrides (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  permission_id uuid not null references public.permissions(id) on delete cascade,
+  company_id uuid references public.companies(id) on delete cascade,
+  module_code text,
+  scope_type text not null default 'company' check (scope_type in ('global', 'company', 'site', 'project', 'vendor')),
+  scope_id uuid,
+  effect text not null check (effect in ('allow', 'deny')),
+  reason text,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, permission_id, company_id, module_code, scope_type, scope_id)
+);
+
 insert into public.roles (code, name)
 values
   ('platform_owner', 'Platform Owner'),
+  ('company_owner', 'Company Owner'),
   ('super_admin', 'Super Admin'),
   ('admin', 'Admin'),
+  ('module_admin', 'Module Admin'),
+  ('manager', 'Manager'),
   ('project_manager', 'Project Manager'),
   ('site_engineer', 'Site Engineer'),
   ('accounts', 'Accounts'),
   ('approver', 'Approver'),
+  ('staff', 'Staff'),
   ('vendor', 'Vendor'),
   ('viewer', 'Viewer')
 on conflict (code) do update set name = excluded.name;
@@ -268,3 +324,7 @@ alter table public.user_roles enable row level security;
 alter table public.companies enable row level security;
 alter table public.erp_modules enable row level security;
 alter table public.company_modules enable row level security;
+alter table public.permissions enable row level security;
+alter table public.role_permissions enable row level security;
+alter table public.user_access_assignments enable row level security;
+alter table public.user_permission_overrides enable row level security;

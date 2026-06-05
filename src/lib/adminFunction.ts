@@ -76,17 +76,23 @@ export async function requireAdmin(event: HandlerEvent): Promise<RequireAdminRes
     role_code: 'super_admin',
   });
 
+  const { data: isCompanyOwner, error: companyOwnerError } = await supabaseUser.rpc('current_user_has_role', {
+    role_code: 'company_owner',
+  });
+
   const { data: isAdminRole, error: adminError } = await supabaseUser.rpc('current_user_has_role', {
     role_code: 'admin',
   });
 
-  if (platformOwnerError || superAdminError || adminError) {
+  if (platformOwnerError || superAdminError || companyOwnerError || adminError) {
     return {
-      error: json(500, { error: platformOwnerError?.message || superAdminError?.message || adminError?.message }),
+      error: json(500, {
+        error: platformOwnerError?.message || superAdminError?.message || companyOwnerError?.message || adminError?.message,
+      }),
     };
   }
 
-  if (!Boolean(isPlatformOwner || isSuperAdmin || isAdminRole)) {
+  if (!Boolean(isPlatformOwner || isSuperAdmin || isCompanyOwner || isAdminRole)) {
     return {
       error: json(403, { error: 'Only Admin and Super Admin users can perform this action.' }),
     };
