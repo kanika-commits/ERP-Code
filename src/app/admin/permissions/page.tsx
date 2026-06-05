@@ -82,15 +82,15 @@ function PermissionsBuilder() {
   const selectedRole = roles.find((role) => role.code === selectedRoleCode);
 
   const rolePermissionIds = useMemo(() => {
-  const role = roles.find((item) => item.code === selectedRoleCode);
-  if (!role) return new Set<string>();
+    const role = roles.find((item) => item.code === selectedRoleCode);
+    if (!role) return new Set<string>();
 
-  return new Set(
-    rolePermissions
-      .filter((item) => item.role_id === role.id && item.allowed === true)
-      .map((item) => item.permission_id)
-  );
-}, [rolePermissions, roles, selectedRoleCode]);
+    return new Set(
+      rolePermissions
+        .filter((item) => item.role_id === role.id && item.allowed === true)
+        .map((item) => item.permission_id),
+    );
+  }, [rolePermissions, roles, selectedRoleCode]);
 
   async function loadBuilderData() {
     setLoading(true);
@@ -267,11 +267,6 @@ function PermissionsBuilder() {
     else next.add(value);
     setter(next);
   }
-console.log('ROLES', roles);
-console.log('PERMISSIONS', permissions);
-console.log('ROLE PERMISSIONS', rolePermissions);
-console.log('SELECTED ROLE', selectedRoleCode);
-console.log('SELECTED PERMISSION CODES', Array.from(selectedPermissionCodes));
   if (loadingAccess || loading) {
     return <div className="card">Loading access control...</div>;
   }
@@ -419,26 +414,22 @@ console.log('SELECTED PERMISSION CODES', Array.from(selectedPermissionCodes));
                     <strong>{module.name}</strong>
                   </td>
                   {accessActions.map((action) => {
-  const code = permissionCode(module.code, action);
-  const permission = permissions.find((item) => item.code === code);
-  const checked = permission ? selectedPermissionCodes.has(permission.code) : false;
+                    const code = permissionCode(module.code, action);
+                    const permission = permissions.find((item) => item.code === code);
+                    const checked = permission ? selectedPermissionCodes.has(permission.code) : false;
 
-  return (
-    <td key={code}>
-      {permission ? (
-        <label className="matrix-check">
-          <input
-            checked={checked}
-            onChange={() => togglePermission(permission.code)}
-            type="checkbox"
-          />
-        </label>
-      ) : (
-        <span className="muted-text">-</span>
-      )}
-    </td>
-  );
-})}
+                    return (
+                      <td key={code}>
+                        {permission ? (
+                          <label className="matrix-check">
+                            <input checked={checked} onChange={() => togglePermission(permission.code)} type="checkbox" />
+                          </label>
+                        ) : (
+                          <span className="muted-text">-</span>
+                        )}
+                      </td>
+                    );
+                  })}
                 </tr>
               ))}
             </tbody>

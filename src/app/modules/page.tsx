@@ -3,17 +3,35 @@
 import Link from 'next/link';
 import { AppTopbar } from '@/components/AppTopbar';
 import { ProtectedPage } from '@/components/ProtectedPage';
+import { can } from '@/lib/accessControl';
+import type { ErpModule } from '@/lib/erpModules';
 import { useEnabledModules } from '@/lib/useEnabledModules';
 import { useCurrentUserAccess } from '@/lib/useCurrentUserAccess';
 
+const moduleViewResources: Partial<Record<ErpModule['code'], string[]>> = {
+  admin: ['companies', 'sites', 'vendors'],
+  contract_management: ['work_orders', 'ra_bills', 'invoices', 'payments', 'debit_notes', 'files', 'reports'],
+  finance: ['payments', 'invoices', 'debit_notes', 'reports'],
+  masters: ['companies', 'sites', 'vendors'],
+  projects: ['sites', 'work_orders'],
+  reports: ['reports'],
+};
+
+function canViewModule(access: ReturnType<typeof useCurrentUserAccess>, module: ErpModule) {
+  if (access.isPlatformOwner || access.isSuperAdmin) return true;
+  if (module.code === 'admin') return access.isAdmin;
+
+  const resources = moduleViewResources[module.code] ?? [];
+  return resources.some((resource) => can(access, resource, 'view'));
+}
+
 function ModulesContent() {
   const { companyName, error, loading, modules } = useEnabledModules();
-  const { isAdmin, isSuperAdmin } = useCurrentUserAccess();
+  const access = useCurrentUserAccess();
   const unfinishedModules = new Set(['procurement', 'purchase', 'hr']);
   const visibleModules = modules.filter((module) => {
-    if (module.code === 'admin' && !isAdmin) return false;
-    if (unfinishedModules.has(module.code) && !isSuperAdmin) return false;
-    return true;
+    if (unfinishedModules.has(module.code) && !access.isSuperAdmin && !access.isPlatformOwner) return false;
+    return canViewModule(access, module);
   });
 
   return (

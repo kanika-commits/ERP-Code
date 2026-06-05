@@ -47,7 +47,7 @@ export async function POST(request: Request) {
   }
 
   const rows = (permissions ?? []).map((permission) => ({
-    effect: 'allow',
+    allowed: true,
     permission_id: permission.id,
     role_id: role.id,
   }));

@@ -135,10 +135,28 @@ create table if not exists public.role_permissions (
   id uuid primary key default gen_random_uuid(),
   role_id uuid not null references public.roles(id) on delete cascade,
   permission_id uuid not null references public.permissions(id) on delete cascade,
-  effect text not null default 'allow' check (effect in ('allow', 'deny')),
+  allowed boolean not null default true,
   created_at timestamptz not null default now(),
   unique (role_id, permission_id)
 );
+
+alter table public.role_permissions add column if not exists allowed boolean;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'role_permissions'
+      and column_name = 'effect'
+  ) then
+    execute 'update public.role_permissions set allowed = case when effect = ''deny'' then false else true end where allowed is null';
+  end if;
+end $$;
+update public.role_permissions set allowed = true where allowed is null;
+alter table public.role_permissions alter column allowed set default true;
+alter table public.role_permissions alter column allowed set not null;
+alter table public.role_permissions drop column if exists effect;
 
 create table if not exists public.user_access_assignments (
   id uuid primary key default gen_random_uuid(),
@@ -162,13 +180,31 @@ create table if not exists public.user_permission_overrides (
   module_code text,
   scope_type text not null default 'company' check (scope_type in ('global', 'company', 'site', 'project', 'vendor')),
   scope_id uuid,
-  effect text not null check (effect in ('allow', 'deny')),
+  allowed boolean not null default true,
   reason text,
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (user_id, permission_id, company_id, module_code, scope_type, scope_id)
 );
+
+alter table public.user_permission_overrides add column if not exists allowed boolean;
+do $$
+begin
+  if exists (
+    select 1
+    from information_schema.columns
+    where table_schema = 'public'
+      and table_name = 'user_permission_overrides'
+      and column_name = 'effect'
+  ) then
+    execute 'update public.user_permission_overrides set allowed = case when effect = ''deny'' then false else true end where allowed is null';
+  end if;
+end $$;
+update public.user_permission_overrides set allowed = true where allowed is null;
+alter table public.user_permission_overrides alter column allowed set default true;
+alter table public.user_permission_overrides alter column allowed set not null;
+alter table public.user_permission_overrides drop column if exists effect;
 
 insert into public.permissions (code, module_code, resource, action, name, is_sensitive)
 values
@@ -212,6 +248,51 @@ set module_code = excluded.module_code,
     name = excluded.name,
     is_sensitive = excluded.is_sensitive,
     updated_at = now();
+
+insert into public.permissions (code, module_code, resource, action, name, is_sensitive)
+select resource_code || '.' || action_code,
+       resource_code,
+       resource_name,
+       action_code,
+       initcap(action_code) || ' ' || resource_name,
+       action_code = 'delete'
+from (
+  values
+    ('companies', 'Companies'),
+    ('sites', 'Sites'),
+    ('vendors', 'Vendors'),
+    ('work_orders', 'Work Orders'),
+    ('ra_bills', 'RA Bills'),
+    ('invoices', 'Invoices'),
+    ('payments', 'Payments'),
+    ('debit_notes', 'Debit Notes'),
+    ('files', 'Files'),
+    ('reports', 'Reports')
+) as resources(resource_code, resource_name)
+cross join (
+  values
+    ('view'),
+    ('add'),
+    ('edit'),
+    ('delete'),
+    ('upload'),
+    ('approve'),
+    ('reject')
+) as actions(action_code)
+on conflict (code) do update
+set module_code = excluded.module_code,
+    resource = excluded.resource,
+    action = excluded.action,
+    name = excluded.name,
+    is_sensitive = excluded.is_sensitive,
+    updated_at = now();
+
+insert into public.role_permissions (role_id, permission_id, allowed)
+select r.id, p.id, true
+from public.roles r
+cross join public.permissions p
+where r.code in ('platform_owner', 'super_admin')
+on conflict (role_id, permission_id) do update set allowed = excluded.allowed;
 
 -- Backfill user company assignment from profiles.
 insert into public.user_company_assignments (user_id, company_id, status)

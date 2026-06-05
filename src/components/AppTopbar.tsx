@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { can } from '@/lib/accessControl';
 import { supabase } from '@/lib/supabase';
 import { useCurrentUserAccess } from '@/lib/useCurrentUserAccess';
 
 export function AppTopbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isInternal, isVendor } = useCurrentUserAccess();
+  const access = useCurrentUserAccess();
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -20,7 +21,12 @@ export function AppTopbar() {
     return isActive ? 'active' : undefined;
   }
 
-  const canUseWorkspace = isInternal || isVendor;
+  const canUseWorkspace =
+    access.isInternal ||
+    access.isVendor ||
+    can(access, 'work_orders', 'view') ||
+    can(access, 'vendors', 'view') ||
+    can(access, 'reports', 'view');
 
   return (
     <header className="topbar">

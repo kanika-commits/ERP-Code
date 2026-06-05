@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import type { AccessAssignment } from '@/lib/accessControl';
 import { supabase } from '@/lib/supabase';
 import type { RoleCode } from '@/lib/roles';
 
@@ -14,12 +15,26 @@ type UserRoleRow = {
   scope_type: string;
   roles:
     | {
+        id: string;
         code: RoleCode;
         name: string;
       }
     | {
+        id: string;
         code: RoleCode;
         name: string;
+      }[]
+    | null;
+};
+
+type RolePermissionRow = {
+  allowed: boolean;
+  permissions:
+    | {
+        code: string;
+      }
+    | {
+        code: string;
       }[]
     | null;
 };
@@ -28,9 +43,19 @@ function normalizeRole(row: UserRoleRow) {
   return Array.isArray(row.roles) ? row.roles[0] ?? null : row.roles;
 }
 
+function isRole(role: ReturnType<typeof normalizeRole>): role is NonNullable<ReturnType<typeof normalizeRole>> {
+  return Boolean(role);
+}
+
+function normalizePermission(row: RolePermissionRow) {
+  return Array.isArray(row.permissions) ? row.permissions[0] ?? null : row.permissions;
+}
+
 export function useCurrentUserAccess() {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [roles, setRoles] = useState<RoleCode[]>([]);
+  const [permissionCodes, setPermissionCodes] = useState<string[]>([]);
+  const [accessAssignments, setAccessAssignments] = useState<AccessAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -51,6 +76,8 @@ export function useCurrentUserAccess() {
         setError(userError?.message || 'No signed-in user.');
         setProfile(null);
         setRoles([]);
+        setPermissionCodes([]);
+        setAccessAssignments([]);
         setLoading(false);
         return;
       }
@@ -63,23 +90,55 @@ export function useCurrentUserAccess() {
 
       const { data: roleData, error: roleError } = await supabase
         .from('user_roles')
-        .select('scope_type,roles(code,name)')
+        .select('scope_type,roles(id,code,name)')
         .eq('user_id', user.id);
+
+      const normalizedRoles = ((roleData ?? []) as UserRoleRow[]).map(normalizeRole).filter(isRole);
+      const roleIds = normalizedRoles.map((role) => role.id);
+
+      const [rolePermissionResult, assignmentResult] = await Promise.all([
+        roleIds.length
+          ? supabase
+              .from('role_permissions')
+              .select('allowed,permissions(code)')
+              .in('role_id', roleIds)
+              .eq('allowed', true)
+          : Promise.resolve({ data: [], error: null }),
+        supabase
+          .from('user_access_assignments')
+          .select('company_id,module_code,scope_id,scope_type,status')
+          .eq('user_id', user.id)
+          .eq('status', 'active'),
+      ]);
 
       if (!mounted) return;
 
-      if (profileError || roleError) {
-        setError(profileError?.message || roleError?.message || 'Could not load access.');
+      if (profileError || roleError || rolePermissionResult.error || assignmentResult.error) {
+        setError(
+          profileError?.message ||
+            roleError?.message ||
+            rolePermissionResult.error?.message ||
+            assignmentResult.error?.message ||
+            'Could not load access.',
+        );
         setProfile(null);
         setRoles([]);
+        setPermissionCodes([]);
+        setAccessAssignments([]);
       } else {
-        const roleCodes = ((roleData ?? []) as UserRoleRow[])
-          .map(normalizeRole)
+        const roleCodes = normalizedRoles
           .map((role) => role?.code)
           .filter((code): code is RoleCode => Boolean(code));
+        const codes = ((rolePermissionResult.data ?? []) as RolePermissionRow[])
+          .filter((row) => row.allowed)
+          .map(normalizePermission)
+          .map((permission) => permission?.code)
+          .filter((code): code is string => Boolean(code));
 
         setProfile(profileData);
         setRoles(roleCodes);
+        setPermissionCodes(Array.from(new Set(codes)));
+        setAccessAssignments((assignmentResult.data ?? []) as AccessAssignment[]);
       }
 
       setLoading(false);
@@ -123,7 +182,9 @@ export function useCurrentUserAccess() {
   return {
     ...access,
     error,
+    accessAssignments,
     loading,
+    permissionCodes,
     profile,
     roles,
   };
