@@ -30,6 +30,11 @@ type UserRoleRow = {
     | null;
 };
 
+type ApiResult = {
+  error?: string;
+  message?: string;
+};
+
 function normalizeRole(row: UserRoleRow) {
   return Array.isArray(row.roles) ? row.roles[0] ?? null : row.roles;
 }
@@ -51,43 +56,38 @@ function UsersDirectory() {
   const [assignMessage, setAssignMessage] = useState('');
   const [assignError, setAssignError] = useState('');
   const [assigning, setAssigning] = useState(false);
+  const [actionMessage, setActionMessage] = useState('');
+  const [actionError, setActionError] = useState('');
+  const [busyUserId, setBusyUserId] = useState('');
 
-  useEffect(() => {
-    let mounted = true;
+  async function loadUsers() {
+    setLoading(true);
+    setError('');
 
-    async function loadUsers() {
-      setLoading(true);
-      setError('');
+    const { data: profileData, error: profileError } = await supabase
+      .from('profiles')
+      .select('id,full_name,email,status,vendor_id')
+      .order('created_at', { ascending: true });
 
-      const { data: profileData, error: profileError } = await supabase
-        .from('profiles')
-        .select('id,full_name,email,status,vendor_id')
-        .order('created_at', { ascending: true });
+    const { data: roleData, error: roleError } = await supabase
+      .from('user_roles')
+      .select('user_id,scope_type,roles(code,name)');
 
-      const { data: roleData, error: roleError } = await supabase
-        .from('user_roles')
-        .select('user_id,scope_type,roles(code,name)');
-
-      if (!mounted) return;
-
-      if (profileError || roleError) {
-        setError(profileError?.message || roleError?.message || 'Could not load users.');
-      } else {
-        setProfiles(profileData ?? []);
-        setUserRoles((roleData ?? []) as UserRoleRow[]);
-      }
-
-      setLoading(false);
+    if (profileError || roleError) {
+      setError(profileError?.message || roleError?.message || 'Could not load users.');
+    } else {
+      setProfiles(profileData ?? []);
+      setUserRoles((roleData ?? []) as UserRoleRow[]);
     }
 
-    loadUsers();
+    setLoading(false);
+  }
 
-    return () => {
-      mounted = false;
-    };
+  useEffect(() => {
+    loadUsers();
   }, []);
 
-  function rolesForUser(userId: string) {
+  function roleRowsForUser(userId: string) {
     return userRoles
       .filter((row) => row.user_id === userId)
       .map((row) => {
@@ -97,6 +97,21 @@ function UsersDirectory() {
         return row.scope_type === 'global' ? label : `${label} (${row.scope_type})`;
       })
       .filter((role): role is string => Boolean(role));
+  }
+
+  function rolesForUser(userId: string) {
+    return userRoles
+      .filter((row) => row.user_id === userId)
+      .map((row) => {
+        const role = normalizeRole(row);
+        if (!role) return null;
+        return {
+          code: role.code,
+          label: ROLE_LABELS[role.code] ?? role.name,
+          scopeLabel: row.scope_type === 'global' ? 'Global' : row.scope_type,
+        };
+      })
+      .filter((role): role is { code: RoleCode; label: string; scopeLabel: string } => Boolean(role));
   }
 
   async function inviteUser() {
@@ -137,6 +152,18 @@ function UsersDirectory() {
     setInviteMessage(result.message ?? 'Invite sent.');
     setInviteEmail('');
     setInviteName('');
+    await loadUsers();
+  }
+
+  function editUser(profile: Profile) {
+    const editableRole = rolesForUser(profile.id).find((role) => !['platform_owner', 'super_admin'].includes(role.code));
+    setAssignEmail(profile.email);
+    setAssignName(profile.full_name || '');
+    setAssignRole(editableRole?.code ?? 'viewer');
+    setAssignMessage('');
+    setAssignError('');
+    setActionMessage(`Editing ${profile.full_name || profile.email}. Choose a role and save.`);
+    setActionError('');
   }
 
   async function assignRoleToUser() {
@@ -179,6 +206,74 @@ function UsersDirectory() {
     setAssignEmail('');
     setAssignName('');
     setAssignRole('viewer');
+    await loadUsers();
+  }
+
+  async function postAdminAction(url: string, body: Record<string, unknown>) {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = (await response.json()) as ApiResult;
+
+    if (!response.ok) {
+      throw new Error(result.error ?? 'Action failed.');
+    }
+
+    return result.message ?? 'Updated.';
+  }
+
+  async function removeRole(profile: Profile, roleCode: RoleCode) {
+    setActionMessage('');
+    setActionError('');
+
+    if (['platform_owner', 'super_admin'].includes(roleCode)) {
+      setActionError('Platform Owner and Super Admin roles are protected.');
+      return;
+    }
+
+    setBusyUserId(profile.id);
+
+    try {
+      const message = await postAdminAction('/api/remove-user-role', {
+        roleCode,
+        userId: profile.id,
+      });
+      setActionMessage(`${message} ${profile.full_name || profile.email} updated.`);
+      await loadUsers();
+    } catch (action) {
+      setActionError(action instanceof Error ? action.message : 'Could not remove role.');
+    } finally {
+      setBusyUserId('');
+    }
+  }
+
+  async function updateUserStatus(profile: Profile, status: 'active' | 'inactive') {
+    setActionMessage('');
+    setActionError('');
+    setBusyUserId(profile.id);
+
+    try {
+      const message = await postAdminAction('/api/update-user-status', {
+        status,
+        userId: profile.id,
+      });
+      setActionMessage(`${message} ${profile.full_name || profile.email} updated.`);
+      await loadUsers();
+    } catch (action) {
+      setActionError(action instanceof Error ? action.message : 'Could not update user.');
+    } finally {
+      setBusyUserId('');
+    }
   }
 
   return (
@@ -213,6 +308,7 @@ function UsersDirectory() {
                   <th>Status</th>
                   <th>Roles</th>
                   <th>Access Type</th>
+                  <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -225,8 +321,49 @@ function UsersDirectory() {
                       <td>
                         <span className="status-pill">{profile.status}</span>
                       </td>
-                      <td>{assignedRoles.length ? assignedRoles.join(', ') : 'No role assigned'}</td>
+                      <td>
+                        {assignedRoles.length ? (
+                          <div className="role-chip-list">
+                            {assignedRoles.map((role) => (
+                              <span className="role-chip" key={`${profile.id}-${role.code}`}>
+                                {role.label}
+                                <small>{role.scopeLabel}</small>
+                              </span>
+                            ))}
+                          </div>
+                        ) : (
+                          'No role assigned'
+                        )}
+                      </td>
                       <td>{profile.vendor_id ? 'Vendor-scoped' : 'Internal / global'}</td>
+                      <td>
+                        <div className="row-actions">
+                          <button className="ghost-button compact-button" type="button" onClick={() => editUser(profile)}>
+                            Edit role
+                          </button>
+                          {assignedRoles
+                            .filter((role) => !['platform_owner', 'super_admin'].includes(role.code))
+                            .map((role) => (
+                              <button
+                                className="ghost-button compact-button"
+                                disabled={busyUserId === profile.id}
+                                key={`remove-${profile.id}-${role.code}`}
+                                type="button"
+                                onClick={() => removeRole(profile, role.code)}
+                              >
+                                Remove {role.label}
+                              </button>
+                            ))}
+                          <button
+                            className="ghost-button compact-button"
+                            disabled={busyUserId === profile.id}
+                            type="button"
+                            onClick={() => updateUserStatus(profile, profile.status === 'active' ? 'inactive' : 'active')}
+                          >
+                            {profile.status === 'active' ? 'Deactivate' : 'Reactivate'}
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   );
                 })}
@@ -234,6 +371,9 @@ function UsersDirectory() {
             </table>
           </div>
         ) : null}
+
+        {actionMessage ? <div className="notice">{actionMessage}</div> : null}
+        {actionError ? <div className="error">{actionError}</div> : null}
       </div>
 
       <div className="card">

@@ -79,15 +79,19 @@ export const handler: Handler = async (event) => {
     role_code: 'super_admin',
   });
 
+  const { data: isCompanyOwner, error: companyOwnerError } = await supabaseUser.rpc('current_user_has_role', {
+    role_code: 'company_owner',
+  });
+
   const { data: isAdminRole, error: adminError } = await supabaseUser.rpc('current_user_has_role', {
     role_code: 'admin',
   });
 
-  if (platformOwnerError || superAdminError || adminError) {
-    return json(500, { error: platformOwnerError?.message || superAdminError?.message || adminError?.message });
+  if (platformOwnerError || superAdminError || companyOwnerError || adminError) {
+    return json(500, { error: platformOwnerError?.message || superAdminError?.message || companyOwnerError?.message || adminError?.message });
   }
 
-  if (!Boolean(isPlatformOwner || isSuperAdmin || isAdminRole)) {
+  if (!Boolean(isPlatformOwner || isSuperAdmin || isCompanyOwner || isAdminRole)) {
     return json(403, { error: `Only admins can assign roles. Signed in as ${actor.email ?? actor.id}.` });
   }
 
@@ -135,6 +139,30 @@ export const handler: Handler = async (event) => {
 
   if (profileError) {
     return json(500, { error: profileError.message });
+  }
+
+  if (!['platform_owner', 'super_admin'].includes(roleCode)) {
+    const { data: protectedRoles, error: protectedRolesError } = await supabaseAdmin
+      .from('roles')
+      .select('id')
+      .in('code', ['platform_owner', 'super_admin']);
+
+    if (protectedRolesError) {
+      return json(500, { error: protectedRolesError.message });
+    }
+
+    const protectedRoleIds = (protectedRoles ?? []).map((protectedRole) => protectedRole.id);
+    let deleteQuery = supabaseAdmin.from('user_roles').delete().eq('user_id', targetUser.id);
+
+    if (protectedRoleIds.length) {
+      deleteQuery = deleteQuery.not('role_id', 'in', `(${protectedRoleIds.join(',')})`);
+    }
+
+    const { error: deleteExistingRoleError } = await deleteQuery;
+
+    if (deleteExistingRoleError) {
+      return json(500, { error: deleteExistingRoleError.message });
+    }
   }
 
   const { error: userRoleError } = await supabaseAdmin.from('user_roles').upsert({

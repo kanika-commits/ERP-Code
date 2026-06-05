@@ -41,6 +41,11 @@ function CompanySettings() {
   const [enabledCodes, setEnabledCodes] = useState<Set<string>>(new Set(erpModules.map((module) => module.code)));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [moduleMessage, setModuleMessage] = useState('');
+  const [moduleError, setModuleError] = useState('');
+  const [savingModuleCode, setSavingModuleCode] = useState('');
+
+  const currentCompany = companies[0] ?? null;
 
   useEffect(() => {
     let mounted = true;
@@ -97,6 +102,50 @@ function CompanySettings() {
       mounted = false;
     };
   }, []);
+
+  async function toggleModule(moduleCode: string, enabled: boolean) {
+    if (!currentCompany) {
+      setModuleError('Company setup is not ready yet.');
+      return;
+    }
+
+    setSavingModuleCode(moduleCode);
+    setModuleMessage('');
+    setModuleError('');
+
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+
+    const response = await fetch('/api/update-company-module', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        companyId: currentCompany.id,
+        enabled,
+        moduleCode,
+      }),
+    });
+
+    const result = (await response.json()) as { error?: string; message?: string };
+    setSavingModuleCode('');
+
+    if (!response.ok) {
+      setModuleError(result.error ?? 'Could not update module.');
+      return;
+    }
+
+    setEnabledCodes((currentCodes) => {
+      const nextCodes = new Set(currentCodes);
+      if (enabled) nextCodes.add(moduleCode);
+      else nextCodes.delete(moduleCode);
+      return nextCodes;
+    });
+    setModuleMessage(result.message ?? 'Module updated.');
+  }
 
   if (loadingAccess || loading) {
     return <div className="card">Loading company settings...</div>;
@@ -179,17 +228,35 @@ function CompanySettings() {
         <div className="module-switch-grid">
           {erpModules.map((module) => {
             const enabled = enabledCodes.has(module.code);
+            const isCoreModule = ['admin', 'masters'].includes(module.code);
             return (
               <article className={`module-switch ${enabled ? 'module-switch-enabled' : ''}`} key={module.code}>
                 <div>
                   <h3>{module.name}</h3>
                   <p>{module.description}</p>
                 </div>
-                <span className={enabled ? 'status-pill' : 'pill'}>{enabled ? 'Enabled' : 'Off'}</span>
+                <div className="module-control">
+                  <span className={enabled ? 'status-pill' : 'pill'}>{enabled ? 'Enabled' : 'Off'}</span>
+                  {isCoreModule ? (
+                    <span className="muted-text">Required</span>
+                  ) : (
+                    <button
+                      className={enabled ? 'ghost-button compact-button' : 'primary-button compact-button'}
+                      disabled={savingModuleCode === module.code}
+                      type="button"
+                      onClick={() => toggleModule(module.code, !enabled)}
+                    >
+                      {savingModuleCode === module.code ? 'Saving...' : enabled ? 'Turn off' : 'Turn on'}
+                    </button>
+                  )}
+                </div>
               </article>
             );
           })}
         </div>
+
+        {moduleMessage ? <div className="notice">{moduleMessage}</div> : null}
+        {moduleError ? <div className="error">{moduleError}</div> : null}
       </div>
 
       <div className="card">
