@@ -118,6 +118,58 @@ create table if not exists public.approval_controls (
   unique (company_id, module_code, site_id, role_id, action)
 );
 
+create table if not exists public.permissions (
+  id uuid primary key default gen_random_uuid(),
+  code text not null unique,
+  module_code text not null,
+  resource text not null,
+  action text not null,
+  name text not null,
+  description text,
+  is_sensitive boolean not null default false,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.role_permissions (
+  id uuid primary key default gen_random_uuid(),
+  role_id uuid not null references public.roles(id) on delete cascade,
+  permission_id uuid not null references public.permissions(id) on delete cascade,
+  effect text not null default 'allow' check (effect in ('allow', 'deny')),
+  created_at timestamptz not null default now(),
+  unique (role_id, permission_id)
+);
+
+create table if not exists public.user_access_assignments (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  role_id uuid not null references public.roles(id) on delete cascade,
+  company_id uuid references public.companies(id) on delete cascade,
+  module_code text,
+  scope_type text not null default 'company' check (scope_type in ('global', 'company', 'site', 'project', 'vendor')),
+  scope_id uuid,
+  status text not null default 'active',
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table if not exists public.user_permission_overrides (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references auth.users(id) on delete cascade,
+  permission_id uuid not null references public.permissions(id) on delete cascade,
+  company_id uuid references public.companies(id) on delete cascade,
+  module_code text,
+  scope_type text not null default 'company' check (scope_type in ('global', 'company', 'site', 'project', 'vendor')),
+  scope_id uuid,
+  effect text not null check (effect in ('allow', 'deny')),
+  reason text,
+  created_by uuid references auth.users(id),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (user_id, permission_id, company_id, module_code, scope_type, scope_id)
+);
+
 insert into public.permissions (code, module_code, resource, action, name, is_sensitive)
 values
   ('companies.view', 'companies', 'Companies', 'view', 'View Companies', false),
@@ -170,10 +222,98 @@ on conflict (user_id, company_id) do update
 set status = excluded.status,
     updated_at = now();
 
+alter table public.permissions enable row level security;
+alter table public.role_permissions enable row level security;
+alter table public.user_access_assignments enable row level security;
+alter table public.user_permission_overrides enable row level security;
 alter table public.user_company_assignments enable row level security;
 alter table public.user_site_assignments enable row level security;
 alter table public.vendor_documents enable row level security;
 alter table public.approval_controls enable row level security;
+
+drop policy if exists "permissions_select_authenticated" on public.permissions;
+create policy "permissions_select_authenticated"
+on public.permissions
+for select
+to authenticated
+using (true);
+
+drop policy if exists "role_permissions_select_authenticated" on public.role_permissions;
+create policy "role_permissions_select_authenticated"
+on public.role_permissions
+for select
+to authenticated
+using (true);
+
+drop policy if exists "role_permissions_admin_manage" on public.role_permissions;
+create policy "role_permissions_admin_manage"
+on public.role_permissions
+for all
+to authenticated
+using (
+  public.current_user_has_role('platform_owner')
+  or public.current_user_has_role('super_admin')
+  or public.current_user_has_role('company_owner')
+)
+with check (
+  public.current_user_has_role('platform_owner')
+  or public.current_user_has_role('super_admin')
+  or public.current_user_has_role('company_owner')
+);
+
+drop policy if exists "user_access_select_company" on public.user_access_assignments;
+create policy "user_access_select_company"
+on public.user_access_assignments
+for select
+to authenticated
+using (
+  public.current_user_has_role('platform_owner')
+  or user_id = auth.uid()
+  or company_id in (select company_id from public.profiles where profiles.id = auth.uid())
+);
+
+drop policy if exists "user_access_admin_manage" on public.user_access_assignments;
+create policy "user_access_admin_manage"
+on public.user_access_assignments
+for all
+to authenticated
+using (
+  public.current_user_has_role('platform_owner')
+  or public.current_user_has_role('super_admin')
+  or public.current_user_has_role('company_owner')
+)
+with check (
+  public.current_user_has_role('platform_owner')
+  or public.current_user_has_role('super_admin')
+  or public.current_user_has_role('company_owner')
+);
+
+drop policy if exists "user_overrides_select_company" on public.user_permission_overrides;
+create policy "user_overrides_select_company"
+on public.user_permission_overrides
+for select
+to authenticated
+using (
+  public.current_user_has_role('platform_owner')
+  or user_id = auth.uid()
+  or company_id in (select company_id from public.profiles where profiles.id = auth.uid())
+);
+
+drop policy if exists "user_overrides_admin_manage" on public.user_permission_overrides;
+create policy "user_overrides_admin_manage"
+on public.user_permission_overrides
+for all
+to authenticated
+using (
+  public.current_user_has_role('platform_owner')
+  or public.current_user_has_role('super_admin')
+  or public.current_user_has_role('company_owner')
+)
+with check (
+  public.current_user_has_role('platform_owner')
+  or public.current_user_has_role('super_admin')
+  or public.current_user_has_role('company_owner')
+);
 
 drop policy if exists "user_company_assignments_select_company" on public.user_company_assignments;
 create policy "user_company_assignments_select_company"
