@@ -273,7 +273,7 @@ values
   ('purchase', 'Purchase', 'Purchase orders, delivery/receipt tracking, vendor bills, and three-way matching.', '/purchase', 60, 'active'),
   ('finance', 'Finance & Accounts', 'Payables, receivables, GST/ITC, TDS, bank payments, reconciliations, and finance reports.', '/finance', 70, 'active'),
   ('hr', 'HR', 'Employees, attendance, leave, payroll, reimbursements, documents, and internal HR workflows.', '/hr', 80, 'active'),
-  ('admin', 'Admin & Settings', 'Users, roles, permissions, number formats, approval rules, audit logs, and company settings.', '/admin/users', 90, 'active')
+  ('admin', 'Admin & Settings', 'Users, roles, permissions, number formats, approval rules, audit logs, and company settings.', '/admin', 90, 'active')
 on conflict (module_code) do update
 set name = excluded.name,
     description = excluded.description,

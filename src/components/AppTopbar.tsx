@@ -8,7 +8,7 @@ import { useCurrentUserAccess } from '@/lib/useCurrentUserAccess';
 export function AppTopbar() {
   const pathname = usePathname();
   const router = useRouter();
-  const { isAdmin, isInternal, isVendor } = useCurrentUserAccess();
+  const { isInternal, isVendor } = useCurrentUserAccess();
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -24,9 +24,9 @@ export function AppTopbar() {
 
   return (
     <header className="topbar">
-      <Link className="brand" href="/modules">
+      <Link className="brand" href="/dashboard">
         <strong>MRC ERP</strong>
-        <span>Module directory</span>
+        <span>Workspace</span>
       </Link>
 
       <nav className="nav" aria-label="ERP navigation">
@@ -34,8 +34,6 @@ export function AppTopbar() {
           Dashboard
         </Link>
         {canUseWorkspace ? <Link className={activeClass('/modules')} href="/modules">Modules</Link> : null}
-        {canUseWorkspace ? <Link className={activeClass('/reports')} href="/reports">Reports</Link> : null}
-        {isAdmin ? <Link className={activeClass('/admin')} href="/admin/users">Admin</Link> : null}
       </nav>
 
       <button className="ghost-button" type="button" onClick={signOut}>

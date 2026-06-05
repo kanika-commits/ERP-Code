@@ -145,6 +145,23 @@ textarea {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.dashboard-hero-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-bottom: 16px;
+}
+
+.dashboard-main-grid {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: 2fr 1fr;
+}
+
+.dashboard-wide-card {
+  grid-row: span 2;
+}
+
 .stack {
   display: grid;
   gap: 16px;
@@ -185,6 +202,20 @@ textarea {
   min-height: 142px;
   padding: 16px;
   text-decoration: none;
+}
+
+.module-launcher-head {
+  margin-bottom: 16px;
+}
+
+.module-launcher-grid {
+  align-items: stretch;
+}
+
+.module-launcher-card {
+  background: var(--panel);
+  box-shadow: var(--shadow);
+  min-height: 136px;
 }
 
 .module-card-active:hover {
@@ -602,6 +633,44 @@ textarea {
   font-size: 13px;
 }
 
+.summary-link:hover {
+  border-color: #9bb7df;
+  box-shadow: 0 8px 18px rgba(37, 99, 173, 0.1);
+}
+
+.dashboard-list {
+  display: grid;
+  gap: 10px;
+}
+
+.dashboard-list-row {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-height: 54px;
+  padding: 12px 14px;
+}
+
+.dashboard-list-row span {
+  color: var(--muted);
+  line-height: 1.35;
+}
+
+.dashboard-list-row strong {
+  color: var(--ink);
+  text-align: right;
+}
+
+.dashboard-shortcut-grid {
+  display: grid;
+  gap: 10px;
+}
+
 .role-template-grid {
   display: grid;
   gap: 12px;
@@ -748,6 +817,15 @@ textarea {
 
   .grid {
     grid-template-columns: 1fr;
+  }
+
+  .dashboard-hero-grid,
+  .dashboard-main-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .dashboard-wide-card {
+    grid-row: auto;
   }
 
   .module-grid {

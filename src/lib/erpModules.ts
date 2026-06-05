@@ -58,7 +58,7 @@ export const erpModules = [
   {
     code: 'admin',
     description: 'Users, roles, permissions, number formats, approval rules, audit logs, and company settings.',
-    href: '/admin/users',
+    href: '/admin',
     name: 'Admin & Settings',
     status: 'Active',
   },

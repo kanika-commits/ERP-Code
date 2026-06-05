@@ -208,92 +208,111 @@ function DashboardContent({ userEmail }: { userEmail?: string }) {
     .filter((code): code is RoleCode => Boolean(code))
     .map((code) => ROLE_LABELS[code] ?? code);
 
+  const alertItems = [
+    {
+      count: metrics.workOrdersWithoutRa,
+      href: '/reports',
+      label: 'Work orders without RA bills',
+    },
+    {
+      count: metrics.vendorKycGaps,
+      href: '/masters',
+      label: 'Vendors missing GSTIN/PAN',
+    },
+    {
+      count: metrics.debitNotes,
+      href: '/debit-notes',
+      label: 'Debit notes to review',
+    },
+  ];
+
+  const deadlineItems = [
+    {
+      date: 'Today',
+      label: `${metrics.workOrdersWithoutRa} work orders need billing follow-up`,
+    },
+    {
+      date: 'This week',
+      label: `${metrics.invoices} invoices available for finance review`,
+    },
+    {
+      date: 'Planned',
+      label: 'Approval deadlines will appear once approval rules are enabled',
+    },
+  ];
+
+  const reportItems = [
+    {
+      href: '/reports',
+      label: 'Outstanding by work order',
+      value: money(metrics.outstanding),
+    },
+    {
+      href: '/reports',
+      label: 'Work order exposure',
+      value: money(metrics.workOrderValue),
+    },
+    {
+      href: '/reports',
+      label: 'Vendor KYC exceptions',
+      value: String(metrics.vendorKycGaps),
+    },
+  ];
+
   return (
     <section className="page">
-      <div className="page-title">
-        <h1>ERP Dashboard</h1>
-        <p>Daily command center for alerts, summaries, pending checks, and high-level ERP health.</p>
+      <div className="page-title-row">
+        <div className="page-title">
+          <h1>Dashboard</h1>
+          <p>
+            Welcome back{profile?.full_name ? `, ${profile.full_name}` : ''}. Start with alerts, deadlines, messages,
+            and reports, then open a module when you need to work.
+          </p>
+        </div>
+        <div className="button-cluster">
+          <Link className="primary-button" href="/modules">
+            Open Modules
+          </Link>
+          <Link className="ghost-button" href="/reports">
+            Reports
+          </Link>
+        </div>
       </div>
 
-      <div className="grid">
-        <article className="card">
-          <h2>Current User</h2>
-          <p>Logged in as {profile?.email ?? userEmail}.</p>
-          <div className="metric">{loadingProfile ? 'Checking' : roleLabels[0] ?? 'User'}</div>
-        </article>
-
-        <article className="card">
-          <h2>Open Outstanding</h2>
-          <p>Invoice value minus payments and debit notes across current imported records.</p>
-          <div className="metric">{money(metrics.outstanding)}</div>
-        </article>
-
-        <article className="card">
-          <h2>Work Order Exposure</h2>
-          <p>Total value of work orders currently stored in the ERP database.</p>
-          <div className="metric">{money(metrics.workOrderValue)}</div>
-        </article>
-      </div>
-
-      {profileError ? <div className="error">{profileError}</div> : null}
-      {metricsError ? <div className="error">{metricsError}</div> : null}
-
-      <div className="module-summary-grid">
-        <article className="summary-item">
-          <span>Work orders</span>
-          <strong>{metrics.workOrders}</strong>
-        </article>
-        <article className="summary-item">
-          <span>Invoices</span>
-          <strong>{metrics.invoices}</strong>
-        </article>
-        <article className="summary-item">
-          <span>Payments</span>
-          <strong>{metrics.payments}</strong>
-        </article>
-        <article className="summary-item">
-          <span>Files stored</span>
-          <strong>{metrics.files}</strong>
-        </article>
-      </div>
-
-      <div className="grid">
+      <div className="dashboard-hero-grid">
         <article className="card">
           <div className="section-head">
             <div>
               <h2>Alerts</h2>
-              <p>Items that should be checked before records become final.</p>
+              <p>Issues that should be checked before work moves forward.</p>
             </div>
-            <Link className="table-link" href="/reports">Open reports</Link>
+            <span className="pill">{alertItems.reduce((sum, item) => sum + item.count, 0)} open</span>
           </div>
-          <div className="stack">
-            <div className="summary-item">
-              <span>Work orders without RA bills</span>
-              <strong>{metrics.workOrdersWithoutRa}</strong>
-            </div>
-            <div className="summary-item">
-              <span>Vendors missing GSTIN/PAN</span>
-              <strong>{metrics.vendorKycGaps}</strong>
-            </div>
-            <div className="summary-item">
-              <span>Debit notes to review</span>
-              <strong>{metrics.debitNotes}</strong>
-            </div>
+          <div className="dashboard-list">
+            {alertItems.map((item) => (
+              <Link className="dashboard-list-row" href={item.href} key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.count}</strong>
+              </Link>
+            ))}
           </div>
         </article>
 
         <article className="card">
           <div className="section-head">
             <div>
-              <h2>Quick Actions</h2>
-              <p>Common ERP starting points for daily work.</p>
+              <h2>Deadlines</h2>
+              <p>Default deadline view. Users can later choose their own widgets.</p>
             </div>
+            <span className="pill">Default</span>
           </div>
-          <div className="row-actions">
-            <Link className="primary-button compact-button" href="/modules">Open module directory</Link>
-            <Link className="ghost-button compact-button" href="/work-orders">Work order register</Link>
-            <Link className="ghost-button compact-button" href="/reports">Exception reports</Link>
-            <Link className="ghost-button compact-button" href="/masters">Master data</Link>
+          <div className="dashboard-list">
+            {deadlineItems.map((item) => (
+              <div className="dashboard-list-row" key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.date}</strong>
+              </div>
+            ))}
           </div>
         </article>
 
@@ -301,49 +320,87 @@ function DashboardContent({ userEmail }: { userEmail?: string }) {
           <div className="section-head">
             <div>
               <h2>Messages</h2>
-              <p>ERP notices and workflow messages will appear here as approval flows are added.</p>
+              <p>ERP messages, approvals, and notices will appear here.</p>
             </div>
-            <span className="pill">Planned</span>
+            <span className="pill">Inbox</span>
           </div>
-          <div className="stack">
-            <div className="summary-item">
-              <span>Approvals pending</span>
-              <strong>Coming next</strong>
-            </div>
-            <div className="summary-item">
+          <div className="dashboard-list">
+            <div className="dashboard-list-row">
               <span>System notices</span>
               <strong>None</strong>
+            </div>
+            <div className="dashboard-list-row">
+              <span>Approval messages</span>
+              <strong>Planned</strong>
+            </div>
+            <div className="dashboard-list-row">
+              <span>Signed in as</span>
+              <strong>{loadingProfile ? 'Checking' : roleLabels[0] ?? profile?.email ?? userEmail}</strong>
             </div>
           </div>
         </article>
       </div>
 
-      <div className="card">
-        <div className="section-head">
-          <div>
-            <h2>ERP Health</h2>
-            <p>The dashboard is intentionally high level. Use the module directory for detailed workflows and registers.</p>
+      {profileError ? <div className="error">{profileError}</div> : null}
+      {metricsError ? <div className="error">{metricsError}</div> : null}
+
+      <div className="dashboard-main-grid">
+        <article className="card dashboard-wide-card">
+          <div className="section-head">
+            <div>
+              <h2>Reports Snapshot</h2>
+              <p>High-level reports that help you decide where to go next.</p>
+            </div>
+            <Link className="table-link" href="/reports">Open reports</Link>
           </div>
-          <Link className="table-link" href="/modules">Go to modules</Link>
-        </div>
-        <div className="module-summary-grid">
-          <article className="summary-item">
-            <span>Master vendors</span>
-            <strong>{metrics.vendors}</strong>
-          </article>
-          <article className="summary-item">
-            <span>Auth</span>
-            <strong>{profile ? 'Ready' : loadingProfile ? 'Checking' : 'Review'}</strong>
-          </article>
-          <article className="summary-item">
-            <span>Storage</span>
-            <strong>{metrics.files ? 'Ready' : 'Empty'}</strong>
-          </article>
-          <article className="summary-item">
-            <span>Next layer</span>
-            <strong>Approvals</strong>
-          </article>
-        </div>
+          <div className="module-summary-grid">
+            {reportItems.map((item) => (
+              <Link className="summary-item summary-link" href={item.href} key={item.label}>
+                <span>{item.label}</span>
+                <strong>{item.value}</strong>
+              </Link>
+            ))}
+            <article className="summary-item">
+              <span>Files stored</span>
+              <strong>{metrics.files}</strong>
+            </article>
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="section-head">
+            <div>
+              <h2>Quick Open</h2>
+              <p>Jump into the workspaces you use most.</p>
+            </div>
+          </div>
+          <div className="dashboard-shortcut-grid">
+            <Link className="ghost-button" href="/modules">Modules</Link>
+            <Link className="ghost-button" href="/contract-management">Contract Management</Link>
+            <Link className="ghost-button" href="/work-orders">Work Orders</Link>
+            <Link className="ghost-button" href="/masters">Master Data</Link>
+          </div>
+        </article>
+
+        <article className="card">
+          <div className="section-head">
+            <div>
+              <h2>Customize</h2>
+              <p>Later each user will choose which widgets they want on this dashboard.</p>
+            </div>
+            <span className="pill">Planned</span>
+          </div>
+          <div className="dashboard-list">
+            <div className="dashboard-list-row">
+              <span>Default widgets</span>
+              <strong>Alerts, Deadlines, Messages, Reports</strong>
+            </div>
+            <div className="dashboard-list-row">
+              <span>Saved shortcuts</span>
+              <strong>Coming next</strong>
+            </div>
+          </div>
+        </article>
       </div>
     </section>
   );
