@@ -35,7 +35,7 @@ function normalizeRole(row: UserRoleRow) {
 }
 
 function UsersDirectory() {
-  const { isAdmin, loading: loadingAccess } = useCurrentUserAccess();
+  const { isAdmin, isPlatformOwner, loading: loadingAccess } = useCurrentUserAccess();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -330,7 +330,7 @@ function UsersDirectory() {
 }
 
 export default function UsersPage() {
-  const { isAdmin, loading } = useCurrentUserAccess();
+  const { isAdmin, isPlatformOwner, loading } = useCurrentUserAccess();
 
   return (
     <ProtectedPage>
@@ -342,11 +342,11 @@ export default function UsersPage() {
               <h1>Users</h1>
               <p>Manage internal MRC users and vendor-scoped ERP access.</p>
             </div>
-            {isAdmin ? (
+            {isPlatformOwner ? (
               <div className="import-banner">
                 <div>
                   <strong>Company and module setup</strong>
-                  <span>Use this before onboarding another company or switching modules on/off.</span>
+                  <span>Review company setup. Module packages are controlled by the ERP product owner.</span>
                 </div>
                 <a className="ghost-button compact-button" href="/admin/company">
                   Open company setup

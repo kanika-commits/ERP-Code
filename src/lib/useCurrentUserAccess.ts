@@ -93,8 +93,9 @@ export function useCurrentUserAccess() {
   }, []);
 
   const access = useMemo(() => {
+    const isPlatformOwner = roles.includes('platform_owner');
     const isSuperAdmin = roles.includes('super_admin');
-    const isAdmin = isSuperAdmin || roles.includes('admin');
+    const isAdmin = isPlatformOwner || isSuperAdmin || roles.includes('admin');
     const isInternal =
       isAdmin ||
       roles.includes('accounts') ||
@@ -107,6 +108,7 @@ export function useCurrentUserAccess() {
     return {
       isAdmin,
       isInternal,
+      isPlatformOwner,
       isSuperAdmin,
       isVendor,
     };

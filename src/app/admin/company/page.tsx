@@ -36,7 +36,7 @@ function normalizeModule(row: ModuleSettingRow) {
 }
 
 function CompanySettings() {
-  const { isAdmin, loading: loadingAccess } = useCurrentUserAccess();
+  const { isAdmin, isPlatformOwner, loading: loadingAccess } = useCurrentUserAccess();
   const [companies, setCompanies] = useState<CompanyRow[]>([]);
   const [enabledCodes, setEnabledCodes] = useState<Set<string>>(new Set(erpModules.map((module) => module.code)));
   const [loading, setLoading] = useState(true);
@@ -102,11 +102,11 @@ function CompanySettings() {
     return <div className="card">Loading company settings...</div>;
   }
 
-  if (!isAdmin) {
+  if (!isPlatformOwner) {
     return (
       <div className="card">
         <h2>Access Restricted</h2>
-        <p>Only Admin and Super Admin users can view company and module settings.</p>
+        <p>Only the ERP platform owner can view company package and module entitlement settings.</p>
       </div>
     );
   }
@@ -168,9 +168,12 @@ function CompanySettings() {
         <div className="section-head">
           <div>
             <h2>Enabled Modules</h2>
-            <p>These switches decide what this company sees in the ERP module directory and future access checks.</p>
+            <p>
+              Module entitlements are controlled by the ERP platform owner. Client admins can see what is enabled, but they
+              should not control their own package.
+            </p>
           </div>
-          <span className="pill">{enabledCodes.size} enabled</span>
+          <span className="pill">{isPlatformOwner ? 'Owner control' : 'Read only'}</span>
         </div>
 
         <div className="module-switch-grid">
@@ -187,6 +190,14 @@ function CompanySettings() {
             );
           })}
         </div>
+      </div>
+
+      <div className="card">
+        <h2>Product Owner Rule</h2>
+        <p>
+          For future client companies, module changes should be handled from the product-owner backend, not by client-side
+          company admins. This keeps subscription/package control with your ERP business.
+        </p>
       </div>
     </div>
   );

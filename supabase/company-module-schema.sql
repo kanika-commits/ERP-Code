@@ -33,6 +33,21 @@ create table if not exists public.company_modules (
 
 alter table public.profiles add column if not exists company_id uuid references public.companies(id);
 
+insert into public.roles (code, name)
+values
+  ('platform_owner', 'Platform Owner'),
+  ('super_admin', 'Super Admin'),
+  ('admin', 'Admin')
+on conflict (code) do update set name = excluded.name;
+
+insert into public.user_roles (user_id, role_id, scope_type, scope_id)
+select existing_super_admins.user_id, platform_role.id, 'global', '00000000-0000-0000-0000-000000000000'
+from public.user_roles existing_super_admins
+join public.roles super_role on super_role.id = existing_super_admins.role_id and super_role.code = 'super_admin'
+cross join public.roles platform_role
+where platform_role.code = 'platform_owner'
+on conflict (user_id, role_id, scope_type, scope_id) do nothing;
+
 insert into public.companies (company_code, name, legal_name, email_domain, status)
 values ('mrc', 'MRC', 'MRC Group', 'mrcgroup.in', 'active')
 on conflict (company_code) do update
@@ -82,10 +97,23 @@ on public.companies
 for select
 to authenticated
 using (
-  public.current_user_has_role('super_admin')
-  or public.current_user_has_role('admin')
+  public.current_user_has_role('platform_owner')
   or id in (select company_id from public.profiles where profiles.id = auth.uid())
 );
+
+drop policy if exists "companies_platform_owner_manage" on public.companies;
+create policy "companies_platform_owner_manage"
+on public.companies
+for all
+to authenticated
+using (
+  public.current_user_has_role('platform_owner')
+)
+with check (
+  public.current_user_has_role('platform_owner')
+);
+
+drop policy if exists "companies_admin_manage" on public.companies;
 
 drop policy if exists "erp_modules_select_authenticated" on public.erp_modules;
 create policy "erp_modules_select_authenticated"
@@ -100,35 +128,20 @@ on public.company_modules
 for select
 to authenticated
 using (
-  public.current_user_has_role('super_admin')
-  or public.current_user_has_role('admin')
+  public.current_user_has_role('platform_owner')
   or company_id in (select company_id from public.profiles where profiles.id = auth.uid())
 );
 
-drop policy if exists "companies_admin_manage" on public.companies;
-create policy "companies_admin_manage"
-on public.companies
-for all
-to authenticated
-using (
-  public.current_user_has_role('super_admin')
-  or public.current_user_has_role('admin')
-)
-with check (
-  public.current_user_has_role('super_admin')
-  or public.current_user_has_role('admin')
-);
-
-drop policy if exists "company_modules_admin_manage" on public.company_modules;
-create policy "company_modules_admin_manage"
+drop policy if exists "company_modules_platform_owner_manage" on public.company_modules;
+create policy "company_modules_platform_owner_manage"
 on public.company_modules
 for all
 to authenticated
 using (
-  public.current_user_has_role('super_admin')
-  or public.current_user_has_role('admin')
+  public.current_user_has_role('platform_owner')
 )
 with check (
-  public.current_user_has_role('super_admin')
-  or public.current_user_has_role('admin')
+  public.current_user_has_role('platform_owner')
 );
+
+drop policy if exists "company_modules_admin_manage" on public.company_modules;

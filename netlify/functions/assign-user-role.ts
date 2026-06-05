@@ -71,6 +71,10 @@ export const handler: Handler = async (event) => {
     return json(401, { error: 'Invalid session.' });
   }
 
+  const { data: isPlatformOwner, error: platformOwnerError } = await supabaseUser.rpc('current_user_has_role', {
+    role_code: 'platform_owner',
+  });
+
   const { data: isSuperAdmin, error: superAdminError } = await supabaseUser.rpc('current_user_has_role', {
     role_code: 'super_admin',
   });
@@ -79,12 +83,16 @@ export const handler: Handler = async (event) => {
     role_code: 'admin',
   });
 
-  if (superAdminError || adminError) {
-    return json(500, { error: superAdminError?.message || adminError?.message });
+  if (platformOwnerError || superAdminError || adminError) {
+    return json(500, { error: platformOwnerError?.message || superAdminError?.message || adminError?.message });
   }
 
-  if (!Boolean(isSuperAdmin || isAdminRole)) {
+  if (!Boolean(isPlatformOwner || isSuperAdmin || isAdminRole)) {
     return json(403, { error: `Only admins can assign roles. Signed in as ${actor.email ?? actor.id}.` });
+  }
+
+  if (!Boolean(isPlatformOwner) && ['platform_owner', 'super_admin'].includes(roleCode)) {
+    return json(403, { error: 'Only the ERP platform owner can assign platform-level roles.' });
   }
 
   const { data: authUsers, error: listError } = await supabaseAdmin.auth.admin.listUsers();

@@ -1,4 +1,5 @@
 export type RoleCode =
+  | 'platform_owner'
   | 'super_admin'
   | 'admin'
   | 'project_manager'
@@ -9,6 +10,7 @@ export type RoleCode =
   | 'viewer';
 
 export const ROLE_LABELS: Record<RoleCode, string> = {
+  platform_owner: 'Platform Owner',
   super_admin: 'Super Admin',
   admin: 'Admin',
   project_manager: 'Project Manager',
@@ -18,4 +20,3 @@ export const ROLE_LABELS: Record<RoleCode, string> = {
   vendor: 'Vendor',
   viewer: 'Viewer',
 };
-

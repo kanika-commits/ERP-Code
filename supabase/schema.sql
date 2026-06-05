@@ -179,6 +179,7 @@ create table if not exists public.company_modules (
 
 insert into public.roles (code, name)
 values
+  ('platform_owner', 'Platform Owner'),
   ('super_admin', 'Super Admin'),
   ('admin', 'Admin'),
   ('project_manager', 'Project Manager'),
@@ -188,6 +189,14 @@ values
   ('vendor', 'Vendor'),
   ('viewer', 'Viewer')
 on conflict (code) do update set name = excluded.name;
+
+insert into public.user_roles (user_id, role_id, scope_type, scope_id)
+select existing_super_admins.user_id, platform_role.id, 'global', '00000000-0000-0000-0000-000000000000'
+from public.user_roles existing_super_admins
+join public.roles super_role on super_role.id = existing_super_admins.role_id and super_role.code = 'super_admin'
+cross join public.roles platform_role
+where platform_role.code = 'platform_owner'
+on conflict (user_id, role_id, scope_type, scope_id) do nothing;
 
 insert into public.companies (company_code, name, legal_name, email_domain, status)
 values ('mrc', 'MRC', 'MRC Group', 'mrcgroup.in', 'active')
