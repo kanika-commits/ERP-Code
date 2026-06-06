@@ -233,29 +233,41 @@ function UsersDirectory() {
   }
 
   async function removeRole(profile: Profile, roleCode: RoleCode) {
-    setActionMessage('');
-    setActionError('');
+  setActionMessage('');
+  setActionError('');
 
-    if (['platform_owner', 'super_admin'].includes(roleCode)) {
-      setActionError('Platform Owner and Super Admin roles are protected.');
+  if (!isPlatformOwner && ['platform_owner', 'super_admin'].includes(roleCode)) {
+    setActionError('Only Platform Owner can remove protected roles.');
+    return;
+  }
+
+  if (roleCode === 'platform_owner') {
+    const platformOwnerCount = userRoles.filter((row) => {
+      const role = normalizeRole(row);
+      return role?.code === 'platform_owner';
+    }).length;
+
+    if (platformOwnerCount <= 1) {
+      setActionError('Cannot remove the last Platform Owner.');
       return;
     }
-
-    setBusyUserId(profile.id);
-
-    try {
-      const message = await postAdminAction('/api/remove-user-role', {
-        roleCode,
-        userId: profile.id,
-      });
-      setActionMessage(`${message} ${profile.full_name || profile.email} updated.`);
-      await loadUsers();
-    } catch (action) {
-      setActionError(action instanceof Error ? action.message : 'Could not remove role.');
-    } finally {
-      setBusyUserId('');
-    }
   }
+
+  setBusyUserId(profile.id);
+
+  try {
+    const message = await postAdminAction('/api/remove-user-role', {
+      roleCode,
+      userId: profile.id,
+    });
+    setActionMessage(`${message} ${profile.full_name || profile.email} updated.`);
+    await loadUsers();
+  } catch (action) {
+    setActionError(action instanceof Error ? action.message : 'Could not remove role.');
+  } finally {
+    setBusyUserId('');
+  }
+}
 
   async function updateUserStatus(profile: Profile, status: 'active' | 'inactive') {
     setActionMessage('');
@@ -342,7 +354,7 @@ function UsersDirectory() {
                             Edit role
                           </button>
                           {assignedRoles
-                            .filter((role) => !['platform_owner', 'super_admin'].includes(role.code))
+                            .filter((role) => isPlatformOwner || !['platform_owner', 'super_admin'].includes(role.code))
                             .map((role) => (
                               <button
                                 className="ghost-button compact-button"
