@@ -19,9 +19,9 @@ export async function POST(request: Request) {
   const siteIds = payload.siteIds ?? [];
   const moduleCodes = payload.moduleCodes ?? [];
 
-  if (!email || !roleCode || !companyIds.length) {
-    return jsonResponse(400, { error: 'Email, role, and at least one company are required.' });
-  }
+  if (!email || !roleCode || !companyIds.length || !moduleCodes.length) {
+  return jsonResponse(400, { error: 'Email, role, at least one company, and at least one module are required.' });
+}
 
   const { data: users, error: usersError } = await access.supabaseAdmin.auth.admin.listUsers();
 
@@ -83,21 +83,18 @@ export async function POST(request: Request) {
     }
   }
 
-const scopeRows = companyIds.flatMap((companyId) => {
-  if (!moduleCodes.length) {
-    return [
-      {
-        company_id: companyId,
-        created_by: access.actorId,
-        module_code: null,
-        role_id: role.id,
-        scope_id: companyId,
-        scope_type: 'company',
-        status: 'active',
-        user_id: target.id,
-      },
-    ];
-  }
+const scopeRows = companyIds.flatMap((companyId) =>
+  moduleCodes.map((moduleCode) => ({
+    company_id: companyId,
+    created_by: access.actorId,
+    module_code: moduleCode,
+    role_id: role.id,
+    scope_id: companyId,
+    scope_type: 'company',
+    status: 'active',
+    user_id: target.id,
+  })),
+);
 
   return moduleCodes.map((moduleCode) => ({
     company_id: companyId,
