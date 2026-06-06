@@ -96,18 +96,6 @@ const scopeRows = companyIds.flatMap((companyId) =>
   })),
 );
 
-  return moduleCodes.map((moduleCode) => ({
-    company_id: companyId,
-    created_by: access.actorId,
-    module_code: moduleCode,
-    role_id: role.id,
-    scope_id: companyId,
-    scope_type: 'company',
-    status: 'active',
-    user_id: target.id,
-  }));
-});
-
   const { error: assignmentError } = await access.supabaseAdmin.from('user_access_assignments').upsert(scopeRows);
 
   if (assignmentError) {
