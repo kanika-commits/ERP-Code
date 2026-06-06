@@ -53,6 +53,20 @@ function roleLabel(role: RoleRow) {
   return ROLE_LABELS[role.code] ?? role.name;
 }
 
+function actionLabel(action: string) {
+  const labels: Record<string, string> = {
+    add: 'Add',
+    approve: 'Approve',
+    delete: 'Delete',
+    edit: 'Edit',
+    reject: 'Reject',
+    upload: 'Upload',
+    view: 'View',
+  };
+
+  return labels[action] ?? action;
+}
+
 function PermissionsBuilder() {
   const { isAdmin, loading: loadingAccess } = useCurrentUserAccess();
   const [roles, setRoles] = useState<RoleRow[]>([]);
@@ -285,10 +299,39 @@ function PermissionsBuilder() {
       {message ? <div className="notice">{message}</div> : null}
       {error ? <div className="error">{error}</div> : null}
 
-      <div className="grid">
+      <div className="card access-flow-card">
+        <div className="section-head">
+          <div>
+            <h2>How Access Works</h2>
+            <p>Use this page to decide what a user can do, and where they can do it.</p>
+          </div>
+          <span className="pill">Owner setup</span>
+        </div>
+        <div className="access-flow">
+          <div>
+            <strong>1. Create a role</strong>
+            <span>Example: Payment Entry User or Site RA Bill Entry User.</span>
+          </div>
+          <div>
+            <strong>2. Give user scope</strong>
+            <span>Choose the company, site, and module where the role applies.</span>
+          </div>
+          <div>
+            <strong>3. Set role powers</strong>
+            <span>Tick view, add, edit, upload, approve, reject, or delete.</span>
+          </div>
+          <div>
+            <strong>4. Add approval rules</strong>
+            <span>Use maker-checker rules for sensitive actions.</span>
+          </div>
+        </div>
+      </div>
+
+      <div className="permission-setup-grid">
         <article className="card">
-          <h2>Custom Role Builder</h2>
-          <p>Create roles such as Payment Entry User, Invoice Reviewer, Work Order Approver, Site RA Bill Entry User, or Vendor Manager.</p>
+          <span className="step-label">Step 1</span>
+          <h2>Create Role</h2>
+          <p>Create reusable job roles. Later you decide exactly what each role can do.</p>
           <div className="form-grid">
             <div className="field">
               <label htmlFor="role-name">Role name</label>
@@ -310,8 +353,9 @@ function PermissionsBuilder() {
         </article>
 
         <article className="card">
-          <h2>User Scope Assignment</h2>
-          <p>Assign a role to one or multiple companies/sites. Site-scoped roles will later hide records outside those sites.</p>
+          <span className="step-label">Step 2</span>
+          <h2>Give User Access</h2>
+          <p>Choose a user, role, module, and the exact companies/sites they should work inside.</p>
           <div className="form-grid">
             <div className="field">
               <label htmlFor="assign-email">User email</label>
@@ -338,9 +382,15 @@ function PermissionsBuilder() {
               </select>
             </div>
           </div>
+          <p className="permission-hint">
+            This does not give full ERP access. It only says where this role is allowed to operate.
+          </p>
           <div className="check-grid">
-            <div>
-              <strong>Companies</strong>
+            <div className="scope-box">
+              <div className="scope-box-head">
+                <strong>Companies</strong>
+                <span>{assignCompanyIds.size} selected</span>
+              </div>
               {companies.map((company) => (
                 <label className="check-row" key={company.id}>
                   <input
@@ -352,8 +402,11 @@ function PermissionsBuilder() {
                 </label>
               ))}
             </div>
-            <div>
-              <strong>Sites</strong>
+            <div className="scope-box">
+              <div className="scope-box-head">
+                <strong>Sites</strong>
+                <span>{assignSiteIds.size || 'All assigned'} selected</span>
+              </div>
               {sites.map((site) => (
                 <label className="check-row" key={site.id}>
                   <input
@@ -375,8 +428,9 @@ function PermissionsBuilder() {
       <div className="card">
         <div className="section-head">
           <div>
-            <h2>Role Permission Matrix</h2>
-            <p>Choose exactly what a role can do by module and action. Super Admin sees everything; other users see only assigned permissions.</p>
+            <span className="step-label">Step 3</span>
+            <h2>Set Role Powers</h2>
+            <p>Choose the actions allowed for the selected role. Company and site limits still come from Step 2.</p>
           </div>
           <div className="field inline-field">
             <label htmlFor="selected-role">Role</label>
@@ -391,10 +445,11 @@ function PermissionsBuilder() {
         </div>
 
         {selectedRole ? (
-          <p className="muted-text">
-            Editing {roleLabel(selectedRole)}
-            {selectedRole.description ? `: ${selectedRole.description}` : ''}
-          </p>
+          <div className="role-summary">
+            <strong>Editing {roleLabel(selectedRole)}</strong>
+            <span>{selectedRole.description || 'No description added yet.'}</span>
+            <span>{selectedPermissionCodes.size} permissions selected</span>
+          </div>
         ) : null}
 
         <div className="table-wrap">
@@ -403,7 +458,7 @@ function PermissionsBuilder() {
               <tr>
                 <th>Module</th>
                 {accessActions.map((action) => (
-                  <th key={action}>{action}</th>
+                  <th key={action}>{actionLabel(action)}</th>
                 ))}
               </tr>
             </thead>
@@ -422,7 +477,12 @@ function PermissionsBuilder() {
                       <td key={code}>
                         {permission ? (
                           <label className="matrix-check">
-                            <input checked={checked} onChange={() => togglePermission(permission.code)} type="checkbox" />
+                            <input
+                              aria-label={`${module.name} ${actionLabel(action)}`}
+                              checked={checked}
+                              onChange={() => togglePermission(permission.code)}
+                              type="checkbox"
+                            />
                           </label>
                         ) : (
                           <span className="muted-text">-</span>
@@ -444,11 +504,15 @@ function PermissionsBuilder() {
       <div className="card">
         <div className="section-head">
           <div>
+            <span className="step-label">Step 4</span>
             <h2>Approval Control</h2>
-            <p>Decide who can add, approve, reject, or only view records for each module. This is where maker-checker rules begin.</p>
+            <p>Use this only when one person should create a record and another person should approve or reject it.</p>
           </div>
           <span className="pill">Maker / Checker</span>
         </div>
+        <p className="permission-hint">
+          Example: Payment Entry User can add a payment, but Accounts Head or Super Admin must approve it.
+        </p>
         <div className="form-grid">
           <div className="field">
             <label htmlFor="approval-company">Company</label>
@@ -475,7 +539,7 @@ function PermissionsBuilder() {
             <select id="approval-action" onChange={(event) => setApprovalAction(event.target.value)} value={approvalAction}>
               {accessActions.map((action) => (
                 <option key={action} value={action}>
-                  {action}
+                  {actionLabel(action)}
                 </option>
               ))}
             </select>
@@ -518,8 +582,8 @@ export default function PermissionsPage() {
           <AppTopbar />
           <section className="page">
             <div className="page-title">
-              <h1>Role & Permission Builder</h1>
-              <p>Create custom roles, assign company/site/module access, and set maker-checker approval rules.</p>
+              <h1>Access Control</h1>
+              <p>Create roles, assign users to companies/sites/modules, and control approval rights.</p>
             </div>
             <PermissionsBuilder />
           </section>
