@@ -6,6 +6,22 @@ type RemoveRoleRequest = {
   userId?: string;
 };
 
+type RoleRow = {
+  role_id: string;
+  roles:
+    | {
+        code: string;
+      }
+    | {
+        code: string;
+      }[]
+    | null;
+};
+
+function normalizeRole(row: RoleRow) {
+  return Array.isArray(row.roles) ? row.roles[0] ?? null : row.roles;
+}
+
 export const handler: Handler = async (event) => {
   if (event.httpMethod !== 'POST') {
     return json(405, { error: 'Method not allowed.' });
@@ -15,7 +31,7 @@ export const handler: Handler = async (event) => {
 
   if ('error' in adminResult) return adminResult.error;
 
-  const { supabaseAdmin } = adminResult;
+  const { supabaseAdmin, user } = adminResult;
   const payload = JSON.parse(event.body || '{}') as RemoveRoleRequest;
   const userId = payload.userId?.trim();
   const roleCode = payload.roleCode?.trim();
@@ -24,8 +40,41 @@ export const handler: Handler = async (event) => {
     return json(400, { error: 'User and role are required.' });
   }
 
-  if (['platform_owner', 'super_admin'].includes(roleCode)) {
-    return json(403, { error: 'Platform Owner and Super Admin roles cannot be removed from this screen.' });
+  const { data: requesterRoles, error: requesterRoleError } = await supabaseAdmin
+    .from('user_roles')
+    .select('role_id,roles(code)')
+    .eq('user_id', user.id);
+
+  if (requesterRoleError) {
+    return json(500, { error: requesterRoleError.message });
+  }
+
+  const requesterIsPlatformOwner = ((requesterRoles ?? []) as RoleRow[]).some((row) => {
+    const role = normalizeRole(row);
+    return role?.code === 'platform_owner';
+  });
+
+  if (['platform_owner', 'super_admin'].includes(roleCode) && !requesterIsPlatformOwner) {
+    return json(403, { error: 'Only Platform Owner can remove protected roles.' });
+  }
+
+  if (roleCode === 'platform_owner') {
+    const { count, error: countError } = await supabaseAdmin
+      .from('user_roles')
+      .select('id,roles!inner(code)', { count: 'exact', head: true })
+      .eq('roles.code', 'platform_owner');
+
+    if (countError) {
+      return json(500, { error: countError.message });
+    }
+
+    if ((count ?? 0) <= 1) {
+      return json(403, { error: 'Cannot remove the last Platform Owner.' });
+    }
+
+    if (userId === user.id) {
+      return json(403, { error: 'You cannot remove your own Platform Owner role.' });
+    }
   }
 
   const { data: role, error: roleError } = await supabaseAdmin.from('roles').select('id,code').eq('code', roleCode).single();
