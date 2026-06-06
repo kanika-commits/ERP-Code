@@ -31,7 +31,19 @@ export const handler: Handler = async (event) => {
 
   if ('error' in adminResult) return adminResult.error;
 
-  const { supabaseAdmin, user } = adminResult;
+  const { supabaseAdmin } = adminResult;
+
+const authHeader = event.headers.authorization || event.headers.Authorization || '';
+const token = authHeader.replace('Bearer ', '');
+
+const {
+  data: { user },
+  error: authError,
+} = await supabaseAdmin.auth.getUser(token);
+
+if (authError || !user) {
+  return json(401, { error: 'Could not verify current user.' });
+}
   const payload = JSON.parse(event.body || '{}') as RemoveRoleRequest;
   const userId = payload.userId?.trim();
   const roleCode = payload.roleCode?.trim();
