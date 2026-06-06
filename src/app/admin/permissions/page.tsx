@@ -424,6 +424,12 @@ function PermissionsBuilder() {
               <div className="scope-box-head">
                 <strong>Companies</strong>
                 <span>{assignCompanyIds.size} selected</span>
+                <button type="button" className="ghost-button compact-button" onClick={() => setAssignCompanyIds(new Set(companies.map((company) => company.id)))}>
+  Select All
+</button>
+<button type="button" className="ghost-button compact-button" onClick={() => setAssignCompanyIds(new Set())}>
+  Clear All
+</button>
               </div>
               {companies.map((company) => (
                 <label className="check-row" key={company.id}>
@@ -440,6 +446,12 @@ function PermissionsBuilder() {
               <div className="scope-box-head">
                 <strong>Sites</strong>
                 <span>{assignSiteIds.size || 'All assigned'} selected</span>
+                <button type="button" className="ghost-button compact-button" onClick={() => setAssignSiteIds(new Set(sites.map((site) => site.id)))}>
+  Select All
+</button>
+<button type="button" className="ghost-button compact-button" onClick={() => setAssignSiteIds(new Set())}>
+  Clear All
+</button>
               </div>
               {sites.map((site) => (
                 <label className="check-row" key={site.id}>
