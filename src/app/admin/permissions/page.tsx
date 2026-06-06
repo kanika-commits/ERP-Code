@@ -551,13 +551,13 @@ function PermissionsBuilder() {
         <div className="section-head">
           <div>
             <span className="step-label">Step 4</span>
-            <h2>Approval Control</h2>
-            <p>Use this only when one person should create a record and another person should approve or reject it.</p>
+            <h2>Maker-Checker Rules</h2>
+            <p>Define which role can approve or reject records created by another role.</p>
           </div>
           <span className="pill">Maker / Checker</span>
         </div>
         <p className="permission-hint">
-          Example: Payment Entry User can add a payment, but Accounts Head or Super Admin must approve it.
+          Example: Site Engineer can add an RA Bill, but HO Approver must approve or reject it.
         </p>
         <div className="form-grid">
           <div className="field">
@@ -591,7 +591,7 @@ function PermissionsBuilder() {
             </select>
           </div>
           <div className="field">
-            <label htmlFor="approval-role">Allowed role</label>
+            <label htmlFor="approval-role">Checker / Approver Role</label>
             <select id="approval-role" onChange={(event) => setApprovalRoleCode(event.target.value)} value={approvalRoleCode}>
               {roles.map((role) => (
                 <option key={role.id} value={role.code}>
