@@ -79,7 +79,9 @@ function PermissionsBuilder() {
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDescription, setNewRoleDescription] = useState('');
   const [assignEmail, setAssignEmail] = useState('');
-  const [assignRoleCode, setAssignRoleCode] = useState('');
+  const [assignRoleCode, setAssignRoleCode] = useState('');const [assignModuleCodes, setAssignModuleCodes] = useState<Set<string>>(
+  new Set(['work_orders'])
+);
   const [assignModuleCode, setAssignModuleCode] = useState('work_orders');
   const [assignCompanyIds, setAssignCompanyIds] = useState<Set<string>>(new Set());
   const [assignSiteIds, setAssignSiteIds] = useState<Set<string>>(new Set());
@@ -241,7 +243,7 @@ function PermissionsBuilder() {
       const saveMessage = await postJson('/api/assign-user-access', {
         companyIds: Array.from(assignCompanyIds),
         email: assignEmail,
-        moduleCode: assignModuleCode,
+        moduleCodes: Array.from(assignModuleCodes),
         roleCode: assignRoleCode,
         siteIds: Array.from(assignSiteIds),
       });
@@ -371,17 +373,49 @@ function PermissionsBuilder() {
                 ))}
               </select>
             </div>
-            <div className="field">
-              <label htmlFor="assign-module">Module</label>
-              <select id="assign-module" onChange={(event) => setAssignModuleCode(event.target.value)} value={assignModuleCode}>
-                {accessModules.map((module) => (
-                  <option key={module.code} value={module.code}>
-                    {module.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
+<div className="scope-box">
+  <div className="scope-box-head">
+    <strong>Modules</strong>
+    <span>{assignModuleCodes.size} selected</span>
+  </div>
+
+  <button
+    type="button"
+    className="ghost-button compact-button"
+    onClick={() =>
+      setAssignModuleCodes(
+        new Set(accessModules.map((module) => module.code))
+      )
+    }
+  >
+    Select All
+  </button>
+
+  <button
+    type="button"
+    className="ghost-button compact-button"
+    onClick={() => setAssignModuleCodes(new Set())}
+  >
+    Clear All
+  </button>
+
+  {accessModules.map((module) => (
+    <label className="check-row" key={module.code}>
+      <input
+        type="checkbox"
+        checked={assignModuleCodes.has(module.code)}
+        onChange={() =>
+          toggleSetValue(
+            setAssignModuleCodes,
+            assignModuleCodes,
+            module.code
+          )
+        }
+      />
+      {module.name}
+    </label>
+  ))}
+</div>          </div>
           <p className="permission-hint">
             This does not give full ERP access. It only says where this role is allowed to operate.
           </p>
