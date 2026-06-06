@@ -22,7 +22,18 @@ function canViewModule(access: ReturnType<typeof useCurrentUserAccess>, module: 
   if (module.code === 'admin') return access.isAdmin;
 
   const resources = moduleViewResources[module.code] ?? [];
-  return resources.some((resource) => can(access, resource, 'view'));
+  const assignedModuleCodes = new Set(
+    (access.accessAssignments ?? [])
+      .filter((assignment) => assignment.status === 'active' && assignment.module_code)
+      .map((assignment) => assignment.module_code as string),
+  );
+  const permittedResources = assignedModuleCodes.size
+    ? resources.filter((resource) => assignedModuleCodes.has(resource))
+    : resources;
+
+  if (!permittedResources.length) return false;
+
+  return permittedResources.some((resource) => can(access, resource, 'view'));
 }
 
 function ModulesContent() {
