@@ -17,6 +17,15 @@ const moduleViewResources: Partial<Record<ErpModule['code'], string[]>> = {
   reports: ['reports'],
 };
 
+const moduleAssignmentAliases: Partial<Record<ErpModule['code'], string[]>> = {
+  admin: ['admin', 'companies', 'sites', 'vendors'],
+  contract_management: ['contract_management', 'work_orders', 'ra_bills', 'invoices', 'payments', 'debit_notes', 'files', 'reports'],
+  finance: ['finance', 'payments', 'invoices', 'debit_notes', 'reports'],
+  masters: ['masters', 'companies', 'sites', 'vendors'],
+  projects: ['projects', 'sites', 'work_orders'],
+  reports: ['reports'],
+};
+
 function canViewModule(access: ReturnType<typeof useCurrentUserAccess>, module: ErpModule) {
   if (access.isPlatformOwner || access.isSuperAdmin) return true;
   if (module.code === 'admin') return access.isAdmin;
@@ -27,13 +36,15 @@ function canViewModule(access: ReturnType<typeof useCurrentUserAccess>, module: 
       .filter((assignment) => assignment.status === 'active' && assignment.module_code)
       .map((assignment) => assignment.module_code as string),
   );
-  const permittedResources = assignedModuleCodes.size
-    ? resources.filter((resource) => assignedModuleCodes.has(resource))
-    : resources;
+  const assignmentAliases = moduleAssignmentAliases[module.code] ?? [module.code, ...resources];
 
-  if (!permittedResources.length) return false;
+  if (assignedModuleCodes.size && !assignmentAliases.some((code) => assignedModuleCodes.has(code))) {
+    return false;
+  }
 
-  return permittedResources.some((resource) => can(access, resource, 'view'));
+  if (!resources.length) return false;
+
+  return resources.some((resource) => can(access, resource, 'view'));
 }
 
 function ModulesContent() {

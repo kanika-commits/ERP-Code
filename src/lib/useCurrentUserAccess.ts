@@ -113,14 +113,8 @@ export function useCurrentUserAccess() {
 
       if (!mounted) return;
 
-      if (profileError || roleError || rolePermissionResult.error || assignmentResult.error) {
-        setError(
-          profileError?.message ||
-            roleError?.message ||
-            rolePermissionResult.error?.message ||
-            assignmentResult.error?.message ||
-            'Could not load access.',
-        );
+      if (profileError || roleError) {
+        setError(profileError?.message || roleError?.message || 'Could not load access.');
         setProfile(null);
         setRoles([]);
         setPermissionCodes([]);
@@ -135,10 +129,11 @@ export function useCurrentUserAccess() {
           .map((permission) => permission?.code)
           .filter((code): code is string => Boolean(code));
 
+        setError(rolePermissionResult.error?.message || assignmentResult.error?.message || '');
         setProfile(profileData);
         setRoles(roleCodes);
-        setPermissionCodes(Array.from(new Set(codes)));
-        setAccessAssignments((assignmentResult.data ?? []) as AccessAssignment[]);
+        setPermissionCodes(rolePermissionResult.error ? [] : Array.from(new Set(codes)));
+        setAccessAssignments(assignmentResult.error ? [] : ((assignmentResult.data ?? []) as AccessAssignment[]));
       }
 
       setLoading(false);
