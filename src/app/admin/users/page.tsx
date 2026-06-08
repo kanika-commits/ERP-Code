@@ -38,11 +38,27 @@ type ApiResult = {
 function normalizeRole(row: UserRoleRow) {
   return Array.isArray(row.roles) ? row.roles[0] ?? null : row.roles;
 }
+type UserCompanyAssignmentRow = {
+  user_id: string;
+  company_id: string;
+};
 
+type UserSiteAssignmentRow = {
+  user_id: string;
+  site_id: string;
+};
+
+type UserAccessAssignmentRow = {
+  user_id: string;
+  module_code: string | null;
+};
 function UsersDirectory() {
   const { isAdmin, isPlatformOwner, loading: loadingAccess } = useCurrentUserAccess();
   const [profiles, setProfiles] = useState<Profile[]>([]);
   const [userRoles, setUserRoles] = useState<UserRoleRow[]>([]);
+  const [userCompanies, setUserCompanies] = useState<UserCompanyAssignmentRow[]>([]);
+const [userSites, setUserSites] = useState<UserSiteAssignmentRow[]>([]);
+const [userAccess, setUserAccess] = useState<UserAccessAssignmentRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [inviteEmail, setInviteEmail] = useState('');
@@ -70,15 +86,37 @@ function UsersDirectory() {
       .order('created_at', { ascending: true });
 
     const { data: roleData, error: roleError } = await supabase
-      .from('user_roles')
-      .select('user_id,scope_type,roles(code,name)');
+  .from('user_roles')
+  .select('user_id,scope_type,roles(code,name)');
 
-    if (profileError || roleError) {
-      setError(profileError?.message || roleError?.message || 'Could not load users.');
-    } else {
-      setProfiles(profileData ?? []);
-      setUserRoles((roleData ?? []) as UserRoleRow[]);
-    }
+const { data: companyAssignmentData, error: companyAssignmentError } = await supabase
+  .from('user_company_assignments')
+  .select('user_id,company_id');
+
+const { data: siteAssignmentData, error: siteAssignmentError } = await supabase
+  .from('user_site_assignments')
+  .select('user_id,site_id');
+
+const { data: accessAssignmentData, error: accessAssignmentError } = await supabase
+  .from('user_access_assignments')
+  .select('user_id,module_code');
+
+    if (profileError || roleError || companyAssignmentError || siteAssignmentError || accessAssignmentError) {
+  setError(
+    profileError?.message ||
+      roleError?.message ||
+      companyAssignmentError?.message ||
+      siteAssignmentError?.message ||
+      accessAssignmentError?.message ||
+      'Could not load users.',
+  );
+} else {
+  setProfiles(profileData ?? []);
+  setUserRoles((roleData ?? []) as UserRoleRow[]);
+  setUserCompanies((companyAssignmentData ?? []) as UserCompanyAssignmentRow[]);
+  setUserSites((siteAssignmentData ?? []) as UserSiteAssignmentRow[]);
+  setUserAccess((accessAssignmentData ?? []) as UserAccessAssignmentRow[]);
+}
 
     setLoading(false);
   }
@@ -113,6 +151,14 @@ function UsersDirectory() {
       })
       .filter((role): role is { code: RoleCode; label: string; scopeLabel: string } => Boolean(role));
   }
+  function companyCountForUser(userId: string) {
+  return new Set(userCompanies.filter((row) => row.user_id === userId).map((row) => row.company_id)).size;
+}
+
+function siteCountForUser(userId: string) {
+  return new Set(userSites.filter((row) => row.user_id === userId).map((row) => row.site_id)).size;
+}
+
 
   async function inviteUser() {
     setInviteMessage('');
@@ -319,8 +365,11 @@ function UsersDirectory() {
                   <th>Email</th>
                   <th>Status</th>
                   <th>Roles</th>
-                  <th>Access Type</th>
-                  <th>Actions</th>
+                  <th>Companies</th>
+<th>Sites</th>
+<th>Modules</th>
+<th>Access Type</th>
+<th>Actions</th>
                 </tr>
               </thead>
               <tbody>
@@ -347,7 +396,10 @@ function UsersDirectory() {
                           'No role assigned'
                         )}
                       </td>
-                      <td>{profile.vendor_id ? 'Vendor-scoped' : 'Internal / global'}</td>
+                      <td>{companyCountForUser(profile.id)}</td>
+<td>{siteCountForUser(profile.id)}</td>
+<td>{moduleCountForUser(profile.id)}</td>
+<td>{profile.vendor_id ? 'Vendor-scoped' : 'Internal / global'}</td>
                       <td>
                         <div className="row-actions">
                           <button className="ghost-button compact-button" type="button" onClick={() => editUser(profile)}>
