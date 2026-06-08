@@ -152,11 +152,27 @@ const { data: accessAssignmentData, error: accessAssignmentError } = await supab
       .filter((role): role is { code: RoleCode; label: string; scopeLabel: string } => Boolean(role));
   }
   function companyCountForUser(userId: string) {
-  return new Set(userCompanies.filter((row) => row.user_id === userId).map((row) => row.company_id)).size;
+  return new Set(
+    userCompanies
+      .filter((row) => row.user_id === userId)
+      .map((row) => row.company_id),
+  ).size;
 }
 
 function siteCountForUser(userId: string) {
-  return new Set(userSites.filter((row) => row.user_id === userId).map((row) => row.site_id)).size;
+  return new Set(
+    userSites
+      .filter((row) => row.user_id === userId)
+      .map((row) => row.site_id),
+  ).size;
+}
+
+function moduleCountForUser(userId: string) {
+  return new Set(
+    userAccess
+      .filter((row) => row.user_id === userId && row.module_code)
+      .map((row) => row.module_code),
+  ).size;
 }
 
 
